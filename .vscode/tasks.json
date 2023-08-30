@@ -1,0 +1,87 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "docker images",
+      "type": "shell",
+      "command": "docker images",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "1", "dependsOn": ["docker images"] },
+    {
+      "label": "docker history grafana/grafana",
+      "type": "shell",
+      "command": "docker history grafana/grafana:6.5.2",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "2", "dependsOn": ["docker history grafana/grafana"] },
+    {
+      "label": "docker pull node:lts-alpine",
+      "type": "shell",
+      "command": "docker pull node:lts-alpine",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "3", "dependsOn": ["docker pull node:lts-alpine"] },
+    {
+      "label": "docker run -it --rm --name eph",
+      "type": "shell",
+      "command": "docker run -it --rm --name ephemeral ubuntu /bin/bash",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "4", "dependsOn": ["docker run -it --rm --name eph"] },
+    {
+      "label": "docker ps",
+      "type": "shell",
+      "command": "docker ps",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "5", "dependsOn": ["docker ps"] },
+    {
+      "label": "docker exec ephemeral /bin/ls ",
+      "type": "shell",
+      "command": "docker exec ephemeral /bin/ls /var",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    { "label": "6", "dependsOn": ["docker exec ephemeral /bin/ls "] },
+    {
+      "label": "",
+      "type": "shell",
+      "command": "",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    {
+      "label": "rm index.html ; curl -o index.",
+      "type": "shell",
+      "command": "rm index.html ; curl -o index.html http://example.org",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    {
+      "label": "docker run --rm -p 8080:80 -v",
+      "type": "shell",
+      "command": "docker run --rm -p 8080:80 -v",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    {
+      "label": "PWD:/usr/share/nginx/html ngin",
+      "type": "shell",
+      "command": "PWD:/usr/share/nginx/html nginx",
+      "presentation": { "panel": "new" },
+      "hide": true
+    },
+    {
+      "label": "7",
+      "dependsOn": ["rm index.html ; curl -o index.",
+        "docker run --rm -p 8080:80 -v PWD:/usr/share/nginx/html nginx"
+      ]
+    }
+  ]
+}
