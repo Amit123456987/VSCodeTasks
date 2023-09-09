@@ -1,0 +1,1 @@
+const THRESHOLD = 10_000;async function chaosQuery(query) {if (math.random() * THRESHOLD <= 1) { throw new Error('chaos query');}return db.query(query);}const result = await chaosQuery('SELECT foo FROM bar LIMIT 1'); return result.rows[0];

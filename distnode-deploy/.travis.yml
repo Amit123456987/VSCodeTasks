@@ -1,0 +1,1 @@
+language: node_js node_js: - "14"install: deploy:provider: scriptscript: bash deploy-heroku.sh  on:branch: master  env: global:language: node_js node_js: - "14"install: deploy:provider: scriptscript: bash deploy-heroku.sh  on:branch: master  env: global:language: node_js node_js: - "14"install: deploy:provider: scriptscript: bash deploy-heroku.sh  on:branch: master  env: global:

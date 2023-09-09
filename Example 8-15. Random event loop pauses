@@ -1,0 +1,1 @@
+const TIMER = 100_000; function slow() {fibonacci(1_000_000n);setTimeout(slow, Math.random() * TIMER);}setTimeout(slow, Math.random() * TIMER);

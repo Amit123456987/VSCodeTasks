@@ -1,0 +1,1 @@
+if (process.env.NODE_ENV === 'staging') {const LIFESPAN = Math.random() * 100_000_000; // 0 - 30 hours setTimeout(() => {console.error('chaos exit'); process.exit(99);}, LIFESPAN);}

@@ -1,0 +1,2012 @@
+Distributed Systems with Node.js
+Building Enterprise-Ready Bacl<end Services
+
+
+Thomas Hunter II
+
+
+Distributed Systems with Node.js
+Building Enterprise-Ready Backend Services
+Thomas Hunter II
+
+Distributed Systems with Node.js
+Revision History for the First Edition
+
+
+Foreword
+
+Dan Shaw (@dshaw)
+Founder and CTO, NodeSource The Node.js Company
+
+Always bet on Node.js
+
+Preface
+
+
+Target Audience
+
+Goals
+
+
+Conventions Used in This Book
+Italic
+Constant width
+Constant width bold
+Constant width italic
+
+Using Code Examples
+Supplemental material (code examples, exercises, etc.) is available for download at https://github.com/tlhunter/distributed-node.
+If you have a technical question or a problem using the code examples, please send email to bookquestions@oreilly.com.
+O’Reilly Online Learning
+
+
+
+
+How to Contact Us
+Email bookquestions@oreilly.com to comment or ask technical questions about this book.
+For news and information about our books and courses, visit http://oreilly.com. Find us on Facebook: http://facebook.com/oreilly
+Follow us on Twitter: http://twitter.com/oreillymedia
+Watch us on YouTube: http://youtube.com/oreillymedia
+Acknowledgments
+Fernando Larrañaga (@xabadu)
+
+Bryan English (@bengl)
+Julián Duque (@julian_duque)
+
+Chapter 1. Why Distributed?
+
+
+  The Single-Threaded Nature of JavaScript
+
+would otherwise run forever, you’re usually greeted with a RangeError: Maximum call stack size exceeded error. When this happens you’ve reached the maximum limit of frames in the call stack.
+a() setTimeout() x() x() Example 1-1. Example of multiple JavaScript stacks
+function a() { b(); }
+function b() { c(); } function c() { /**/ }
+
+function x() { y(); }
+function y() { z(); } function z() { /**/ }
+
+setTimeout(x, 0); a();
+
+Figure 1-1. Visualization of multiple JavaScript stacks
+setTimeout() x() a() a() x() a() x() 
+SURPRISE INTERVIEW QUESTION
+Example 1-2. JavaScript timing question
+setTimeout(() => console.log('A'), 0); console.log('B');
+setTimeout(() => console.log('C'), 100); setTimeout(() => console.log('D'), 0);
+
+let i = 0;
+while (i < 1_000_000_000) { // Assume this takes ~500ms let ignore = Math.sqrt(i);
+i++;
+}
+
+console.log('E');
+ 
+cluster worker_threads child_process 
+Table 1-1. Surprise interview solution
+Log	B	E	A	D	C
+setTimeout()
+
+Quick Node.js Overview
+Figure 1-2. Visualization of sequential versus parallel I/O
+
+ Figure 1-3. The layers of Node.js
+crypto zlibExample 1-3. Node.js threads
+#!/usr/bin/env node
+const fs = require('fs'); fs.readFile('/etc/passwd', 
+(err, data) => {  if (err) throw err; console.log(data);
+});
+
+setImmediate(  () => { 
+console.log('This runs while file is being read');
+
+});
+
+/etc/passwd
+console.log('Print, then exit');
+
+setInterval(() => {
+console.log('Process will run forever');
+}, 1_000);
+
+
+.unref() .ref()Example 1-4. The common .ref() and .unref() methods
+const t1 = setTimeout(() => {}, 1_000_000);  const t2 = setTimeout(() => {}, 2_000_000); 
+// ...
+t1.unref(); 
+// ... clearTimeout(t2); 
+setTimeout() The Node.js Event Loop
+
+setTimeout() Event Loop Phases
+Poll
+Check
+setImmediate() 
+Close
+EventEmitter close net.Server close Timers
+setTimeout() setInterval() Pending
+net.Socket ECONNREFUSED process.nextTick() Figure 1-4. Notable phases of the Node.js event loop
+
+Code Example
+Example 1-5. event-loop-phases.js
+const fs = require('fs');
+
+setImmediate(() => console.log(1)); Promise.resolve().then(() => console.log(2)); process.nextTick(() => console.log(3)); fs.readFile(  filename, () => {
+console.log(4);
+setTimeout(() => console.log(5)); setImmediate(() => console.log(6)); process.nextTick(() => console.log(7));
+});
+console.log(8);
+fs setImmediate() process.nextTick() fs.readFile() 
+fs.readFile() setTimeout() setImmediate() process.nextTick() async await const sleep_st = (t) => new Promise((r) => setTimeout(r, t)); const sleep_im = () => new Promise((r) => setImmediate(r));
+
+(async () => {
+setImmediate(() => console.log(1)); console.log(2);
+await sleep_st(0);
+setImmediate(() => console.log(3)); console.log(4);
+await sleep_im();
+
+setImmediate(() => console.log(5)); console.log(6);
+await 1;
+setImmediate(() => console.log(7)); console.log(8);
+})();
+
+async await.then() setImmediate(() => console.log(1)); console.log(2);
+Promise.resolve().then(() => setTimeout(() => { setImmediate(() => console.log(3)); console.log(4);
+Promise.resolve().then(() => setImmediate(() => { setImmediate(() => console.log(5)); console.log(6);
+Promise.resolve().then(() => { setImmediate(() => console.log(7)); console.log(8);
+});
+}));
+}, 0));
+
+setTimeout() setImmediate() Event Loop Tips
+
+setImmediate() process.nextTick()RangeErrorconst nt_recursive = () => process.nextTick(nt_recursive); nt_recursive(); // setInterval will never run
+
+const si_recursive = () => setImmediate(si_recursive); si_recursive(); // setInterval will run
+
+setInterval(() => console.log('hi'), 10);
+
+setInterval() nt_recursive() si_recursive() setImmediate() // Antipattern
+
+function foo(count, callback) { if (count <= 0) {
+return callback(new TypeError('count > 0'));
+}
+myAsyncOperation(count, callback);
+}
+
+count count function foo(count, callback) { if (count <= 0) {
+return process.nextTick(() => callback(new TypeError('count > 0')));
+}
+myAsyncOperation(count, callback);
+}
+
+setImmediate() process.nextTick() let bar = false; foo(3, () => {
+assert(bar);
+});
+bar = true;
+
+bar Sample Applications
+
+http Service Relationship
+Figure 1-5. The relationship between web-api and recipe-api
+
+
+$ npm init -y
+
+npm install Producer Service
+Example 1-6. recipe-api/producer-http-basic.js
+
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+console.log(`worker pid=${process.pid}`); server.get('/recipes/:id', async (req, reply) => {
+console.log(`worker request pid=${process.pid}`); const id = Number(req.params.id);
+if (id !== 42) { reply.statusCode = 404;
+return { error: 'not_found' };
+}
+return {
+producer_pid: process.pid, recipe: {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+
+ $ node recipe-api/producer-http-basic.js # terminal 1
+
+$ curl http://127.0.0.1:4000/recipes/42  # terminal 2
+
+{
+"producer_pid": 25765, "recipe": {
+"id": 42,
+"name": "Chicken Tikka Masala", "steps": "Throw it in a pot...", "ingredients": [
+{ "id": 1, "name": "Chicken", "quantity": "1 lb" },
+{ "id": 2, "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+
+Consumer Service
+Example 1-7. web-api/consumer-http-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 const server = require('fastify')(); const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+server.get('/', async () => {
+const req = await fetch(`http://${TARGET}/recipes/42`); const producer_data = await req.json();
+
+return {
+consumer_pid: process.pid, producer_data
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+$ node web-api/consumer-http-basic.js # terminal 1
+$ curl http://127.0.0.1:3000/	# terminal 2
+
+{
+"consumer_pid": 25670, "producer_data": {
+"producer_pid": 25765, "recipe": {
+...
+}
+}
+}
+
+pid Even a multithreaded application is constrained by the limitations of a single machine.
+1	“Userland” is a term borrowed from operating systems, meaning the space outside of the kernel where a user’s applications can run. In the case of Node.js programs, it refers to application code and npm packages—basically, everything not built into Node.js.
+2	A “tick” refers to a complete pass through the event loop. Confusingly, setImmediate() takes a tick to run, whereas process.nextTick() is more immediate, so the two functions deserve a name swap.
+3	In a real-world scenario, any shared files should be checked in via source control or loaded as an outside dependency via an npm package.
+
+4	Many of the examples in this book require you two run multiple processes, with some acting as clients and some as servers. For this reason, you’ll often need to run processes in separate terminal windows. In general, if you run a command and it doesn’t immediately exit, it probably requires a dedicated terminal.
+
+Chapter 2. Protocols
+
+
+
+Table 2-1. The OSI layers
+
+Layer	Name	Example
+8	User	JSON, gRPC
+7	Application	HTTP, WebSocket
+6	Presentation	MIME, ASCII, TLS
+5	Session	Sockets
+4	Transport	TCP, UDP
+3	Network	IP, ICMP
+2	Data Link	MAC, LLC
+1	Physical	Ethernet, IEEE 802.11
+Request and Response with HTTP
+
+HTTP Payloads
+Example 2-1. Node.js request code
+#!/usr/bin/env node
+
+// npm install node-fetch@2.6
+const fetch = require('node-fetch');
+
+(async() => {
+const req = await fetch('http://localhost:3002/data', {
+
+method: 'POST', headers: {
+'Content-Type': 'application/json',
+'User-Agent': `nodejs/${process.version}`, 'Accept': 'application/json'
+},
+body: JSON.stringify({ foo: 'bar'
+})
+});
+const payload = await req.json(); console.log(payload);
+})();
+Example 2-2. HTTP request
+POST /data HTTP/1.1 
+Content-Type: application/json  User-Agent: nodejs/v14.8.0 Accept: application/json
+Content-Length: 13
+Accept-Encoding: gzip,deflate Connection: close
+Host: localhost:3002
+
+{"foo":"bar"} 
+\r\n
+Example 2-3. HTTP response
+HTTP/1.1 403 Forbidden  Server: nginx/1.16.0 
+Date: Tue, 29 Oct 2019 15:29:31 GMT
+Content-Type: application/json; charset=utf-8 Content-Length: 33
+Connection: keep-alive Cache-Control: no-cache Vary: accept-encoding
+
+{"error":"must_be_authenticated"} 
+HTTP Semantics
+HTTP methods
+POSTGETPATCHDELETEIdempotency
+GETPATCHDELETE 
+Status codes
+Table 2-2. HTTP status code ranges
+
+Range	Type	Examples
+100–199	Information	101 Switching Protocols
+200–299	Success	200 OK, 201 Created
+300–399	Redirect	301 Moved Permanently
+400–499	Client error	401 Unauthorized, 404 Not Found
+500–599	Server error	500 Internal Server Error, 502 Bad Gateway
+Client versus server errors
+
+Response caching
+GET Expires Statelessness
+lscdls Cookie HTTP Compression
+Accept-Encoding
+
+Content-Encoding: br  require Example 2-4. server-gzip.js
+#!/usr/bin/env node
+
+// Adapted from https://nodejs.org/api/zlib.html
+// Warning: Not as efficient as using a Reverse Proxy const zlib = require('zlib');
+const http = require('http'); const fs = require('fs');
+
+http.createServer((request, response) => {
+const raw = fs.createReadStream(  dirname + '/index.html'); const acceptEncoding = request.headers['accept-encoding'] || ''; response.setHeader('Content-Type', 'text/plain'); console.log(acceptEncoding);
+
+if (acceptEncoding.includes('gzip')) { console.log('encoding with gzip'); response.setHeader('Content-Encoding', 'gzip');
+
+raw.pipe(zlib.createGzip()).pipe(response);
+} else {
+console.log('no encoding'); raw.pipe(response);
+}
+}).listen(process.env.PORT || 1337);
+$ echo "<html><title>Hello World</title></html>" >> index.html
+$ node server-gzip.js
+
+# Request uncompressed content
+$ curl http://localhost:1337/
+# Request compressed content and view binary representation
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | xxd # Request compressed content and decompress
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | gunzip
+
+curl Example 2-5. Comparing compressed versus uncompressed requests
+$ curl http://localhost:1337/ | wc -c
+$ curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | wc -c
+echo 
+Content-Length HTTPS / TLS
+
+localhost Example 2-6. Generating a self-signed certificate
+$ mkdir -p ./{recipe-api,shared}/tls
+$ openssl req -nodes -new -x509 \
+-keyout recipe-api/tls/basic-private-key.key \
+-out shared/tls/basic-certificate.cert
+This command creates two files, namely basic-private-key.key (the private key) and basic-certificate.cert (the public key).
+Next, copy the recipe-api/producer-http-basic.js service that you made in Example 1-6 to a new file named recipe-api/producer-https-basic.js to resemble Example 2-7. This is an HTTPS server built entirely with Node.js.
+Example 2-7. recipe-api/producer-https-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+// Warning: Not as efficient as using a Reverse Proxy const fs = require('fs');
+const server = require('fastify')({ https: { 
+key: fs.readFileSync(  dirname+'/tls/basic-private-key.key'),
+cert: fs.readFileSync(  dirname+'/../shared/tls/basic-certificate.cert'),
+}
+});
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+server.get('/recipes/:id', async (req, reply) => { const id = Number(req.params.id);
+if (id !== 42) { reply.statusCode = 404;
+return { error: 'not_found' };
+}
+return {
+producer_pid: process.pid,
+
+recipe: {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at https://${HOST}:${PORT}`);
+});
+$ node recipe-api/producer-https-basic.js	# terminal 1
+$ curl --insecure https://localhost:4000/recipes/42 # terminal 2
+
+--insecure http https rejectUnauthorized: false 
+signed by another one called IdenTrust DST Root CA X3. The three certificates form a chain of trust (see Figure 2-1 for a visualization of this).
+Figure 2-1. The certificate chain of trust
+ca: certContent Example 2-8. web-api/consumer-https-basic.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6
+// Warning: Not as efficient as using a Reverse Proxy
+
+const server = require('fastify')(); const fetch = require('node-fetch'); const https = require('https'); const fs = require('fs');
+const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+const options = {
+agent: new https.Agent({ 
+ca: fs.readFileSync(  dirname+'/../shared/tls/basic-certificate.cert'),
+})
+};
+
+server.get('/', async () => {
+const req = await fetch(`https://${TARGET}/recipes/42`, options);
+const payload = await req.json();
+
+return {
+consumer_pid: process.pid, producer_data: payload
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+$ node web-api/consumer-https-basic.js # terminal 1
+$ curl http://localhost:3000/	# terminal 2
+
+The curl command talks to web-api using HTTP, and web-api then talks to
+recipe-api using HTTPS.
+
+Example 2-9. How to be your own Certificate Authority
+# Happens once for the CA
+$ openssl genrsa -des3 -out ca-private-key.key 2048 
+$ openssl req -x509 -new -nodes -key ca-private-key.key \
+-sha256 -days 365 -out shared/tls/ca-certificate.cert 
+
+# Happens for each new certificate
+$ openssl genrsa -out recipe-api/tls/producer-private-key.key 2048 
+$ openssl req -new -key recipe-api/tls/producer-private-key.key \
+-out recipe-api/tls/producer.csr 
+$ openssl x509 -req -in recipe-api/tls/producer.csr \
+-CA shared/tls/ca-certificate.cert \
+-CAkey ca-private-key.key -CAcreateserial \
+-out shared/tls/producer-certificate.cert -days 365 -sha256 
+CSR: Generate a private key ca-private-key.key for the Certificate Authority.
+CSR: Generate a root cert shared/tls/ca-certificate.cert (this will be provided to clients). You’ll get asked a lot of questions, but they don’t matter for this example.
+APP: Generate a private key producer-private-key.key for a particular service.
+localhost CSR: Generate a service certificate producer-certificate.cert signed by the
+
+Now modify the code in web-api/consumer-https-basic.js to load the ca- certificate.cert file. Also modify recipe-api/producer-https-basic.js to load both the producer-private-key.key and producer-certificate.cert files. Restart both servers and run the following command again:
+$ curl http://localhost:3000/
+
+You should get a successful response, even though web-api wasn’t aware of the recipe-api service’s exact certificate; it gains its trust from the root ca- certificate.cert certificate instead.
+JSON over HTTP
+
+Content-Type: application/json ?limit=10&starting_after=20has_more ?per_page=10&page=3Link The Dangers of Serializing POJOs
+JSON.stringify(obj)
+toJSON() User toJSON() const user1 = { username: 'pojo',
+email: 'pojo@example.org'
+};
+class User { constructor(username, email) {
+this.username = username; this.email = email;
+}
+toJSON() {
+return {
+username: this.username, email: this.email,
+};
+}
+}
+const user2 = new User('class', 'class@example.org');
+// ...
+res.send(user1); // POJO res.send(user2); // Class Instance
+
+{"username":"pojo","email":"pojo@example.org"}
+{"username":"class","email":"class@example.org"}
+
+password 
+user.password = valueuser1.password = user2.password = 'hunter2';
+// ... res.send(user1); res.send(user2);
+
+{"username":"pojo","email":"pojo@example.org","password":"hunter2"}
+{"username":"class","email":"class@example.org"}
+
+username emailpassword API Facade with GraphQL
+POST 
+GraphQL Schema
+String IntExample 2-10. shared/graphql-schema.gql
+type Query {  recipe(id: ID): Recipe pid: Int
+}
+type Recipe {  id: ID!
+name: String! steps: String
+ingredients: [Ingredient]! 
+}
+type Ingredient { id: ID!
+name: String! quantity: String
+}
+Recipe Recipe Ingredient ingredientsQuerypid recipe
+Recipe recipe idRecipe Table 2-3. GraphQL scalars
+
+Name	Examples	JSON equivalent
+
+Int	10, 0, -1	Number
+
+Float	1, -1.0	Number
+
+String	“Hello, friend!\n”	String
+
+Boolean	true, false	Boolean
+
+ID	“42”, “975dbe93”	String
+Recipe id ID! Recipe name steps StringingredientsIngredient Ingredient Queries and Responses
+
+pid {
+pid
+}
+
+{
+"data": { "pid": 9372
+}
+}
+
+datadata
+errors Query {
+recipe(id: 42) { name ingredients {
+name quantity
+}
+}
+}
+
+id name id steps name quantity {
+"data": {
+"recipe": {
+"name": "Chicken Tikka Masala", "ingredients": [
+{ "name": "Chicken", "quantity": "1 lb" },
+{ "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+}
+
+graphql graphql fastify-gql graphql GraphQL Producer
+
+Example 2- 1. recipe-api/producer-graphql.js
+#!/usr/bin/env node
+// npm install fastify@3.2 fastify-gql@5.3 const server = require('fastify')();
+const graphql = require('fastify-gql'); const fs = require('fs');
+const schema = fs.readFileSync( dirname + '/../shared/graphql-schema.gql').toString(); 
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+const resolvers = {  Query: { 
+pid: () => process.pid,
+recipe: async (_obj, {id}) => {
+if (id != 42) throw new Error(`recipe ${id} not found`); return {
+id, name: "Chicken Tikka Masala", steps: "Throw it in a pot...",
+}
+}
+},
+Recipe: { 
+ingredients: async (obj) => { return (obj.id != 42) ? [] : [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+}
+}
+};
+
+server
+.register(graphql, { schema, resolvers, graphiql: true }) 
+.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}/graphql`);
+});
+graphql resolvers graphql Query Recipe Recipe server.register() fastify-gql 
+server.register /graphql resolvers graphiql at http://localhost:4000/graphiql. Ideally, you’d never set that value to true for a service running in production.
+resolvers Query Recipe async resolvers.Query.recipe recipe() id Recipe
+id Recipe Recipe idnamestepsingredients ingredients resolvers.Recipe recipe() serves
+id name resolvers recipe() ingredientsresolvers.Recipe.ingredients Recipe recipe() idnamesteps id id Ingredient GraphQL Consumer
+
+Example 2-12. web-api/consumer-graphql.js
+#!/usr/bin/env node
+// npm install fastify@3.2 node-fetch@2.6 const server = require('fastify')(); const fetch = require('node-fetch'); const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const complex_query = `query kitchenSink ($id:ID) { 
+recipe(id: $id) { id name ingredients {
+name quantity
+}
+}
+pid
+}`;
+
+server.get('/', async () => {
+const req = await fetch(`http://${TARGET}/graphql`, { method: 'POST',
+headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ 
+query: complex_query, variables: { id: "42" }
+}),
+});
+return {
+consumer_pid: process.pid, producer_data: await req.json()
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+POST query variables 
+complex_query kitchenSink$id recipe() variables $$ node recipe-api/producer-graphql.js # terminal 1
+$ node web-api/consumer-graphql.js	# terminal 2
+$ curl http://localhost:3000	# terminal 3
+
+{
+"consumer_pid": 20827, "producer_data": {
+"data": {
+"recipe": { "id": "42",
+"name": "Chicken Tikka Masala", "ingredients": [
+{ "name": "Chicken", "quantity": "1 lb" },
+{ "name": "Sauce", "quantity": "2 cups" }
+]
+},
+"pid": 20842
+}
+}
+}
+
+
+RPC with gRPC
+POST /invoiceemail POST /invoice create_invoice() 
+Protocol Buffers
+.proto Example 2-13. shared/grpc-recipe.proto
+syntax = "proto3"; package recipe;
+service RecipeService { 
+rpc GetRecipe(RecipeRequest) returns (Recipe) {} rpc GetMetaData(Empty) returns (Meta) {}
+}
+message Recipe { int32 id = 1;  string name = 2; string steps = 3;
+repeated Ingredient ingredients = 4; 
+}
+message Ingredient { int32 id = 1; string name = 2;
+string quantity = 3;
+}
+message RecipeRequest { int32 id = 1;
+}
+message Meta {  int32 pid = 2;
+
+}
+message Empty {}
+RecipeServiceMetaid Recipe ingredientsIntint32Table 2-4. Common gRPC scalars
+
+Name	Examples	Node/JS equivalent
+
+double	1.1	
+Number
+
+float	1.1	
+Number
+
+int32	-2_147_483_648	
+Number
+
+int64	9_223_372_036_854_775_808	
+Number
+
+bool	true, false	
+Boolean
+
+string	“Hello, friend!\n”	
+String
+
+bytes	binary data	
+Buffer
+
+repeated Ingredient id quantity {"id":123,"code":456} 01230456
+
+id codeIngredient idnamequantity substitute
+
+EventEmitter gRPC Producer
+@ Example 2-14. recipe-api/producer-grpc.js
+#!/usr/bin/env node
+
+// npm install @grpc/grpc-js@1.1 @grpc/proto-loader@0.5 const grpc = require('@grpc/grpc-js');
+const loader = require('@grpc/proto-loader'); const pkg_def = loader.loadSync( dirname +
+'/../shared/grpc-recipe.proto'); 
+const recipe = grpc.loadPackageDefinition(pkg_def).recipe; const HOST = process.env.HOST || '127.0.0.1';
+const PORT = process.env.PORT || 4000; const server = new grpc.Server();
+server.addService(recipe.RecipeService.service, {  getMetaData: (_call, cb) => { 
+cb(null, {
+pid: process.pid,
+});
+},
+getRecipe: (call, cb) => { 
+
+if (call.request.id !== 42) {
+return cb(new Error(`unknown recipe ${call.request.id}`));
+}
+cb(null, {
+id: 42, name: "Chicken Tikka Masala", steps: "Throw it in a pot...", ingredients: [
+{ id: 1, name: "Chicken", quantity: "1 lb", },
+{ id: 2, name: "Sauce", quantity: "2 cups", }
+]
+});
+},
+});
+
+server.bindAsync(`${HOST}:${PORT}`, grpc.ServerCredentials.createInsecure(),  (err, port) => {
+if (err) throw err; server.start();
+console.log(`Producer running at http://${HOST}:${port}/`);
+});
+GetMetaData(Empty) getRecipe() call.requestgetMetaData() http://localhost:4000/recipe.RecipeService/GetMetaData
+
+
+gRPC Consumer
+@grpc/grpc-js util.promisify() Example 2-15. web-api/consumer-grpc.js
+#!/usr/bin/env node
+
+// npm install @grpc/grpc-js@1.1 @grpc/proto-loader@0.5 fastify@3.2 const util = require('util');
+const grpc = require('@grpc/grpc-js'); const server = require('fastify')();
+const loader = require('@grpc/proto-loader'); const pkg_def = loader.loadSync( dirname +
+'/../shared/grpc-recipe.proto'); 
+const recipe = grpc.loadPackageDefinition(pkg_def).recipe; const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000';
+
+const client = new recipe.RecipeService(  TARGET,
+grpc.credentials.createInsecure() 
+);
+const getMetaData = util.promisify(client.getMetaData.bind(client)); const getRecipe = util.promisify(client.getRecipe.bind(client));
+
+server.get('/', async () => {
+const [meta, recipe] = await Promise.all([ getMetaData({}), 
+getRecipe({id: 42}), 
+]);
+
+return {
+consumer_pid: process.pid, producer_data: meta, recipe
+};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+
+});
+
+
+
+
+
+
+
+
+recipe.RecipeService
+GetMetaData() Empty GetRecipe() RecipeRequest 
+@grpc/grpc-js .proto getMetaData()$ node recipe-api/producer-grpc.js # terminal 1
+$ node web-api/consumer-grpc.js	# terminal 2
+$ curl http://localhost:3000/	# terminal 3
+
+{
+"consumer_pid": 23786, "producer_data": { "pid": 23766 }, "recipe": {
+"id": 42, "name": "Chicken Tikka Masala", "steps": "Throw it in a pot...",
+
+"ingredients": [
+{ "id": 1, "name": "Chicken", "quantity": "1 lb" },
+{ "id": 2, "name": "Sauce", "quantity": "2 cups" }
+]
+}
+}
+
+recipe Recipe ingredientsRecipe ALTERNATIVES TO PROTOBUFS AND GRPC
+
+1 These code examples take many shortcuts to remain terse. For example, always favor path.join()
+over manual string concatenation when generating paths.
+
+Chapter 3. Scaling
+
+
+The Cluster Module
+cluster child_process fork()  
+cluster  http cluster if A Simple Example
+Example 3-1. recipe-api/producer-http-basic-master.js
+#!/usr/bin/env node
+const cluster = require('cluster');  console.log(`master pid=${process.pid}`); cluster.setupMaster({
+exec:   dirname+'/producer-http-basic.js' 
+});
+cluster.fork();  cluster.fork();
+
+cluster
+.on('disconnect', (worker) => {  console.log('disconnect', worker.id);
+})
+.on('exit', (worker, code, signal) => { console.log('exit', worker.id, code, signal);
+// cluster.fork(); 
+})
+.on('listening', (worker, {address, port}) => {
+
+console.log('listening', worker.id, `${address}:${port}`);
+});
+cluster filenamecluster.fork() cluster cluster 0 
+Figure 3-1. Master-worker relationships with cluster
+No changes need to be made to basic stateless applications that serve as the worker—the recipe-api/producer-http-basic.js code will work just fine.2 Now it’s time to make a few requests to the server. This time, execute the recipe- api/producer-http-basic-master.js file instead of the recipe-api/producer-http- basic.js file. In the output you should see some messages resembling the following:
+master pid=7649
+Producer running at http://127.0.0.1:4000 Producer running at http://127.0.0.1:4000 listening 1 127.0.0.1:4000
+listening 2 127.0.0.1:4000
+
+<PID> $ brew install pstree # if using macOS
+$ pstree <PID> -p -a
+
+node,7649 ./master.js
+├─node,7656 server.js
+│	├─{node},15233
+│	├─{node},15234
+│	├─{node},15235
+│	├─{node},15236
+│	├─{node},15237
+│	└─{node},15243
+├─node,7657 server.js
+│	├─ ... Six total children like above ...
+│	└─{node},15244
+├─ ... Six total children like above ...
+└─{node},15230
+
+./master.jsserver.js{node}Request Dispatching
+
+$ curl http://localhost:4000/recipes/42 # run three times
+
+worker request pid=7656 worker request pid=7657 worker request pid=7656
+
+listening $ kill <pid>
+
+kill 7656disconnect exit disconnect 1
+exit 1 null SIGTERM
+
+$ curl http://localhost:4000/recipes/42 # run three times
+
+kill disconnect exit cluster.fork() exit
+
+kill Cluster Shortcomings
+cluster cluster 
+producer_data.pid cluster producer_data.pid cluster t3.small clusterExample 3-2. cluster-fibonacci.js
+
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+console.log(`worker pid=${process.pid}`); server.get('/:limit', async (req, reply) => { 
+return String(fibonacci(Number(req.params.limit)));
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+function fibonacci(limit) {  let prev = 1n, next = 0n, swap; while (limit) {
+swap = prev;
+prev = prev + next; next = swap;
+limit--;
+}
+return next;
+}
+/<limit>limit fibonacci() The same Example 3-1 code can be used for acting as the cluster master. Re- create the content from the cluster master example and place it in a master- fibonacci.js file next to cluster-fibonacci.js. Then, update it so that it’s loading cluster-fibonacci.js, instead of producer-http-basic.js.
+$ npm install -g autocannon@6	# terminal 1
+$ node master-fibonacci.js	# terminal 1
+$ autocannon -c 2 http://127.0.0.1:4000/100000 # terminal 2
+
+Table 3-1. Fibonacci cluster with multiple cores
+Statistic	Result
+
+
+autocannon Table 3-2. Fibonacci single process
+Statistic	Result
+
+
+taskset 
+# Linux-only command:
+$ taskset -cp 0 <pid> # run for master, worker 1, worker 2
+
+autocannon Table 3-3. Fibonacci cluster with single core
+Statistic	Result
+
+
+cluster cluster Reverse Proxies with HAProxy
+
+api1.example.org api9.example.orgapi.example.org 
+Figure 3-2. Reverse proxies intercept incoming network traffic
+cluster Introduction to HAProxy
+
+Example 3-3. haproxy/stats.cfg
+frontend inbound  mode http 
+bind localhost:8000 stats enable 
+stats uri /admin?stats
+frontend inbound:8000$ haproxy -f haproxy/stats.cfg
+
+http://localhost:8000/admin?stats
+
+
+Load Balancing and Health Checks
+
+Figure 3-3. Load balancing with HAProxy
+Example 3-4. web-api/consumer-http-healthendpoint.js (truncated)
+server.get('/health', async () => { console.log('health check'); return 'OK';
+});
+haproxy/load-balance.cfg and add the content from Example 3-5 to it.
+Example 3-5. haproxy/load-balance.cfg
+defaults  mode http
+timeout connect 5000ms  timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-api  stats enable
+stats uri /admin?stats
+
+backend web-api 
+option httpchk GET /health 
+server web-api-1 localhost:3001 check  server web-api-2 localhost:3002 check
+defaults 
+GET /health check :3001 :3002:3000cluster  host:port
+$ node recipe-api/producer-http-basic.js
+$ PORT=3001 node web-api/consumer-http-healthendpoint.js
+$ PORT=3002 node web-api/consumer-http-healthendpoint.js
+$ haproxy -f ./haproxy/load-balance.cfg
+
+$ curl http://localhost:3000/ # run several times
+
+curl consumer_pid producer_pid single recipe-api instance is running.
+
+Open up the HAProxy statistics page again4 by visiting http://localhost:3000/admin?stats. You should now see two sections in the output: one for the inbound frontend and one for the new web-api backend. In the web-api section, you should see the two different server instances listed.
+Table 3-4. Truncated HAProxy stats
+
+	Sessions total	Bytes out	LastChk
+web-api-1	6	2,262	L7OK/200 in 1ms
+web-api-2	5	1,885	L7OK/200 in 0ms
+Backend	11	4,147	
+curl 
+curl consumer_pid CONSUMER_PID $ kill <CONSUMER_PID> \
+&& curl http://localhost:3000/ \ && curl http://localhost:3000/
+
+flag value check server server ... check inter 10s fall 4Table 3-5. HAProxy health check flags
+Flag	Type  Default Description
+
+
+fall	int	3	Consecutive healthy checks before being UP
+
+rise	int	2	Consecutive unhealthy checks before being DOWN
+
+Compression
+Example 3-6. haproxy/compression.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-api
+
+backend web-api compression offload  compression algo gzip 
+compression type application/json text/plain  server web-api-1 localhost:3001
+Accept-Encoding Content-Type Content-Type application/jsontext/plain
+Accept-Encoding $ node recipe-api/producer-http-basic.js
+$ PORT=3001 node web-api/consumer-http-basic.js
+$ haproxy -f haproxy/compression.cfg
+$ curl http://localhost:3000/
+$ curl -H 'Accept-Encoding: gzip' http://localhost:3000/ | gunzip
+
+TLS Termination
+Figure 3-4. HAProxy TLS termination
+
+Example 3-7. Generating a .pem file
+$ openssl req -nodes -new -x509 \
+-keyout haproxy/private.key \
+-out haproxy/certificate.cert
+$ cat haproxy/certificate.cert haproxy/private.key \
+>haproxy/combined.pem
+inbound frontend to listen via HTTPS and to load the combined.pem file.
+Example 3-8. haproxy/tls.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+global 
+tune.ssl.default-dh-param 2048
+
+frontend inbound
+bind localhost:3000 ssl crt haproxy/combined.pem  default_backend web-api
+
+backend web-api
+server web-api-1 localhost:3001
+global ssl crt global 
+$ node recipe-api/producer-http-basic.js	# terminal 1
+$ PORT=3001 node web-api/consumer-http-basic.js # terminal 2
+$ haproxy -f haproxy/tls.cfg	# terminal 3
+$ curl --insecure https://localhost:3000/	# terminal 4
+
+curl --insecure Rate Limiting and Back Pressure
+
+maxConnections http.Server http.Server http Example 3-9. low-connections.js
+#!/usr/bin/env node
+
+const http = require('http');
+
+const server = http.createServer((req, res) => { console.log('current conn', server._connections); setTimeout(() => res.end('OK'), 10_000); 
+});
+
+server.maxConnections = 2;  server.listen(3020, 'localhost');
+setTimeout() curl curl $ node low-connections.js	# terminal 1
+
+$ curl http://localhost:3020/ # terminals 2-4
+
+curl OK curl curl: (56) Recv failure: Connection reset by
+peerserver.maxConnections Example 3-10. haproxy/backpressure.cfg
+defaults maxconn 8  mode http
+
+frontend inbound
+bind localhost:3010 default_backend web-api
+
+backend web-api option httpclose 
+server web-api-1 localhost:3020 maxconn 2 
+
+maxconn 8maxconn 2 option httpclose server.maxConnections curl $ node low-connections.js	# terminal 1
+$ haproxy -f haproxy/backpressure.cfg # terminal 2
+$ curl http://localhost:3010/	# terminals 3-5
+
+curl curl 
+current conn 1
+current conn 2
+current conn 2
+
+server.maxConnections maxconn SLA and Load Testing
+
+Introduction to Autocannon
+
+sudo $ npm install -g autocannon@6
+
+
+Running a Baseline Load Test
+
+Example 3- 1. benchmark/native-http.js
+#!/usr/bin/env node
+
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+
+require("http").createServer((req, res) => { res.end('ok');
+}).listen(PORT, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+$ node benchmark/native-http.js
+$ autocannon -d 60 -c 10 -l http://localhost:4000/
+
+-d -c - l GET POST Table 3-6. Autocannon request latency
+Stat	2.5% 50% 97.5% 99% Avg	Stdev  Max
+
+Latency 0ms	0ms	0ms	0ms	0.01ms 0.08ms 9.45ms
+
+Table 3-7. Autocannon request volume
+Stat	1%	2.5%	50%	97.5%  Avg	Stdev	Min
+
+
+-l 
+
+Table 3-8. Autocannon detailed latency results
+
+Percentile	Latency	Percentile	Latency	Percentile	Latency
+0.001%	0ms	10%	0ms	97.5%	0ms
+0.01%	0ms	25%	0ms	99%	0ms
+0.1%	0ms	50%	0ms	99.9%	1ms
+1%	0ms	75%	0ms	99.99%	2ms
+2.5%	0ms	90%	0ms	99.999%	3ms
+Figure 3-5. Autocannon latency results graph
+
+
+Reverse Proxy Concerns
+Establishing a baseline
+Example 3-12. haproxy/benchmark-basic.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:4001 default_backend native-http
+
+backend native-http
+server native-http-1 localhost:4000
+$ node benchmark/native-http.js
+$ haproxy -f haproxy/benchmark-basic.cfg
+$ autocannon -d 60 -c 10 -l http://localhost:4001
+
+
+
+HTTP compression
+
+Figure 3-6. HAProxy latency
+
+mode tcp Example 3-13. haproxy/passthru.cfg
+defaults mode tcp
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000
+
+default_backend server-api
+
+backend server-api
+server server-api-1 localhost:3001
+Use the same server-gzip.js file that was created in Example 2-4, though you’ll want to comment out the console.log calls. The same haproxy/compression.cfg file created in Example 3-6 will also be used, as well as the haproxy/passthru.cfg
+$ rm index.html ; curl -o index.html https://thomashunter.name
+$ PORT=3001 node server-gzip.js
+$ haproxy -f haproxy/passthru.cfg
+$ autocannon -H "Accept-Encoding: gzip" \
+-d 60 -c 10 -l http://localhost:3000/ # Node.js # Kill the previous haproxy process
+$ haproxy -f haproxy/compression.cfg
+$ autocannon -H "Accept-Encoding: gzip" \
+-d 60 -c 10 -l http://localhost:3000/ # HAProxy
+
+
+Figure 3-7. Node.js gzip compression latency
+
+TLS termination
+
+Figure 3-8. HAProxy gzip compression latency
+
+ First, performing TLS termination within the Node.js process is tested. For this test use the same recipe-api/producer-https-basic.js file that you created in
+
+console.log $ PORT=3001 node recipe-api/producer-https-basic.js
+$ haproxy -f haproxy/passthru.cfg
+$ autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+
+Table 3-9. Native Node.js TLS termination throughput
+Stat	1%	2.5%	50%	97.5%	Avg	Stdev	Min
+
+Req/Sec	7,263	11,991	13,231 18,655	13,580.7  1,833.58 7,263
+
+Next, to test HAProxy, make use of the recipe-api/producer-http-basic.js file created back in Example 1-6 (again, comment out the console.log calls), as well as the haproxy/tls.cfg file from Example 3-8:
+$ PORT=3001 node recipe-api/producer-http-basic.js
+$ haproxy -f haproxy/tls.cfg
+$ autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+
+Table 3-10. HAProxy TLS termination throughput
+Stat    1%   2.5%  50%   97.5% Avg   Stdev  Min
+
+
+Protocol Concerns
+
+Figure 3-9. Benchmarking in the cloud
+TARGET <RECIPE_API_IP> recipe-api service in each of the following examples.
+JSON over HTTP benchmarks
+This first load test will benchmark the recipe-api/producer-http-basic.js service created in Example 1-6 by sending requests through the web-api/consumer-http- basic.js service created in Example 1-7:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-http-basic.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js
+
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+Figure 3-10. Benchmarking JSON over HTTP
+GraphQL benchmarks
+This next load test will use the recipe-api/producer-graphql.js service created in Example 2-11 by sending requests through the web-api/consumer-graphql.js service created in Example 2-12:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-graphql.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+
+
+gRPC benchmarks
+
+Figure 3-11. Benchmarking GraphQL
+
+This final load test will test the recipe-api/producer-grpc.js service created in Example 2-14 by sending requests through the web-api/consumer-grpc.js service created in Example 2-15:
+# Server VPS
+$ HOST=0.0.0.0 node recipe-api/producer-grpc.js # Client VPS
+$ TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js
+$ autocannon -d 60 -c 10 -l http://localhost:3000
+
+
+Conclusion
+
+Figure 3-12. Benchmarking gRPC
+
+JSON.stringify() Buffer Coming Up with SLOs
+
+Figure 3-13. Benchmarking a production application
+
+-R Example 3-14. haproxy/fibonacci.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:5000 default_backend fibonacci
+
+backend fibonacci
+server fibonacci-1 localhost:5001 # server fibonacci-2 localhost:5002 # server fibonacci-3 localhost:5003
+
+sleep() // Add this line inside the server.get async handler await sleep(10);
+
+// Add this function to the end of the file function sleep(ms) {
+return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+$ PORT=5001 node cluster-fibonacci.js # later run with 5002 & 5003
+$ haproxy -f haproxy/fibonacci.cfg
+$ autocannon -d 60 -c 10 -R 10 http://localhost:5000/10000
+
+-R Next, uncomment the second-to-last line of the haproxy/fibonacci.cfg file. Also, run another instance of cluster-fibonacci.js, setting the PORT value to 5002.
+Table 3- 1. Fibonacci SLO
+Instance count 1  2  3
+
+	The fork() method name is inspired by the fork system call, though the two are technically unrelated.
+1	More advanced applications might have some race-conditions unearthed when running multiple copies.
+2	This backend has a balance <algorithm> directive implicitely set to roundrobin. It can be set to leastconn to route requests to the instance with the fewest connections, source to consistently route a client by IP to an instance, and several other algorithm options are also available.
+3	You’ll need to manually refresh it any time you want to see updated statistics; the page only displays a static snapshot.
+4Regardless of performance, it’s necessary that services exposed to the internet are encrypted.
+
+Chapter 4. Observability
+
+
+console.log() console.log()
+Environments
+NODE_ENV $ export NODE_ENV=production
+$ node server.js
+
+Development
+
+Staging
+Production
+Logging with ELK
+ELK, or more specifically, the ELK stack, is a reference to Elasticsearch,
+
+Elasticsearch
+:9200Logstash
+:7777Kibana
+:5601Figure 4-1. The ELK stack
+
+Running ELK via Docker
+-v Example 4-1. misc/elk/udp.conf
+input { udp {
+id => "nodejs_udp_logs" port => 7777
+codec => json
+}
+}
+output { elasticsearch {
+hosts => ["localhost:9200"] document_type => "nodelog" manage_template => false
+index => "nodejs-%{+YYYY.MM.dd}"
+}
+}
+
+
+sysctl -e sysctl Example 4-2. Running ELK within Docker
+$ sudo sysctl -w vm.max_map_count=262144 # Linux Only
+$ docker run -p 5601:5601 -p 9200:9200 \
+-p 5044:5044 -p 7777:7777/udp \
+-v $PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf \
+-e MAX_MAP_COUNT=262144 \
+-it --name distnode-elk sebp/elk:683
+Transmitting Logs from Node.js
+For this example, you’re going to again start by modifying an existing application. Copy the web-api/consumer-http-basic.js file created in Example 1- 7 to web-api/consumer-http-logs.js as a starting point. Next, modify the file to look like the code in Example 4-3.
+Example 4-3. web-api/consumer-http-logs.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 middie@5.1 const server = require('fastify')();
+const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const log = require('./logstash.js'); 
+
+(async () => {
+await server.register(require('middie'));  server.use((req, res, next) => { 
+log('info', 'request-incoming', { 
+path: req.url, method: req.method, ip: req.ip, ua: req.headers['user-agent'] || null });
+
+next();
+});
+server.setErrorHandler(async (error, req) => { log('error', 'request-failure', {stack: error.stack, 
+path: req.url, method: req.method, }); return { error: error.message };
+});
+server.get('/', async () => {
+const url = `http://${TARGET}/recipes/42`;
+log('info', 'request-outgoing', {url, svc: 'recipe-api'});  const req = await fetch(url);
+const producer_data = await req.json();
+return { consumer_pid: process.pid, producer_data };
+});
+server.get('/error', async () => { throw new Error('oh no'); }); server.listen(PORT, HOST, () => {
+log('verbose', 'listen', {host: HOST, port: PORT}); 
+});
+})();
+The new logstash.js file is now being loaded.
+middie @log4js- node/logstashudp 
+Example 4-4. web-api/logstash.js
+const client = require('dgram').createSocket('udp4');  const host = require('os').hostname();
+const [LS_HOST, LS_PORT] = process.env.LOGSTASH.split(':');  const NODE_ENV = process.env.NODE_ENV;
+
+module.exports = function(severity, type, fields) { const payload = JSON.stringify({ 
+'@timestamp': (new Date()).toISOString(),
+"@version": 1, app: 'web-api', environment: NODE_ENV, severity, type, fields, host
+});
+console.log(payload); client.send(payload, LS_PORT, LS_HOST);
+};
+dgram LOGSTASH@timestampapp severity typefields
+severity 
+watch Example 4-5. Running web-api and generating logs
+$ NODE_ENV=development LOGSTASH=localhost:7777 \ node web-api/consumer-http-logs.js
+$ node recipe-api/producer-http-basic.js
+$ brew install watch # required for macOS
+$ watch -n5 curl http://localhost:3000
+$ watch -n13 curl http://localhost:3000/error
+watch Creating a Kibana Dashboard
+nodejs-*
+@timestamp nodejs-* Figure 4-2. Kibana visualizations
+nodejs-* nodejs-*
+typeisrequest-incoming appis
+web-api
+@timestamp Figure 4-3. Requests over time in Kibana
+request-outgoing that visualization web-api outgoing requests. Finally, create a third visualization
+with a type field of listen and name it web-api server starts.
+
+Running Ad-Hoc Queries
+app:"web-api" AND (severity:"error" OR severity:"warn")
+
+PUT /recipe 
+Metrics with Graphite, StatsD, and Grafana
+
+Graphite
+StatsD
+Grafana
+Figure 4-4. Graphite, StatsD, and Grafana
+
+Running via Docker
+:8080:8125:8000Example 4-6. Running StatsD + Graphite, and Grafana
+$ docker run \
+-p 8080:80 \
+-p 8125:8125/udp \
+-it --name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1
+$ docker run \
+-p 8000:3000 \
+-it --name distnode-grafana grafana/grafana:6.5.2
+
+Table 4-1. Configuring Grafana to use Graphite
+Name	Dist Node Graphite
+Transmitting Metrics from Node.js
+foo.bar.baz foo.bar.baz:1|c
+
+dgram statsd-client
+
+Again, start by rebuilding a version of the consumer service. Copy the web- api/consumer-http-basic.js file created in Example 1-7 to web-api/consumer- http-metrics.js as a starting point. From there, modify the file to resemble Example 4-7. Be sure to run the npm install command to get the required
+Example 4-7. web-api/consumer-http-metrics.js (first half)
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 statsd-client@0.4.4 middie@5.1 const server = require('fastify')();
+const fetch = require('node-fetch'); const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const SDC = require('statsd-client');
+const statsd = new (require('statsd-client'))({host: 'localhost', port: 8125, prefix: 'web-api'}); 
+
+(async () => {
+await server.register(require('middie')); server.use(statsd.helpers.getExpressMiddleware('inbound', { 
+timeByUrl: true})); server.get('/', async () => {
+const begin = new Date();
+const req = await fetch(`http://${TARGET}/recipes/42`); statsd.timing('outbound.recipe-api.request-time', begin);  statsd.increment('outbound.recipe-api.request-count');  const producer_data = await req.json();
+
+return { consumer_pid: process.pid, producer_data };
+});
+server.get('/error', async () => { throw new Error('oh no'); }); server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+})();
+web-api
+statsd-client localhost:8125web-apistatsd-client inbound outbound.recipe-api.request-timeoutbound.recipe-
+api.request-count$ NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js
+$ node recipe-api/producer-http-basic.js
+$ autocannon -d 300 -R 5 -c 1 http://localhost:3000
+$ watch -n1 curl http://localhost:3000/error
+
+Creating a Grafana Dashboard
+
+stats_count web-apiinboundresponse_code* * aliasByNode(stats_counts.web-api.inbound.response_code.*, 4)
+
+aliasByNode(stats.timers.web-api.outbound.*.request-time.upper_90, 4)
+
+
+aliasByNode(stats_counts.web-api.outbound.*.request-count, 3)
+
+
+Figure 4-5. Completed Grafana dashboard
+Node.js Health Indicators
+Example 4-8. web-api/consumer-http-metrics.js (second half)
+const v8 = require('v8'); const fs = require('fs');
+
+setInterval(() => {
+statsd.gauge('server.conn', server.server._connections); 
+
+const m = process.memoryUsage();  statsd.gauge('server.memory.used', m.heapUsed); statsd.gauge('server.memory.total', m.heapTotal);
+
+const h = v8.getHeapStatistics();  statsd.gauge('server.heap.size', h.used_heap_size); statsd.gauge('server.heap.limit', h.heap_size_limit);
+
+fs.readdir('/proc/self/fd', (err, list) => { if (err) return;
+statsd.gauge('server.descriptors', list.length); 
+});
+
+const begin = new Date();
+setTimeout(() => { statsd.timing('eventlag', begin); }, 0); 
+}, 10_000);
+stats.gaugesstats.timersserver.connserver.memory.used server.memory.total
+setTimeout() Figure 4-6. Updated Grafana dashboard
+
+Distributed Request Tracing with Zipkin
+
+request_id How Does Zipkin Work?
+
+Figure 4-7. Example requests and Zipkin data
+[{
+
+"id":	"0000000000000111",
+"traceId": "0000000000000100",
+"parentId": "0000000000000110",
+"timestamp": 1579221096510000,
+"name": "get_recipe", "duration": 80000, "kind": "CLIENT", "localEndpoint": {
+"serviceName": "web-api", "ipv4": "127.0.0.1", "port": 100
+},
+"remoteEndpoint": { "ipv4": "127.0.0.2", "port": 200 }, "tags": {
+"http.method": "GET", "http.path": "/recipe/42", "diagram": "C2"
+}
+}]
+
+idtraceIdparentId timestamp duration Date.now() kind CLIENT SERVERname localEndpoint SERVER CLIENT remoteEndpoint SERVER portnametags http.method http.path
+Table 4-2. Values reported from Figure 4-7
+
+Message	id	parentId	traceId	kind
+S1	110	N/A	100	SERVER
+C2	111	110	100	CLIENT
+S2	111	110	100	SERVER
+C3	121	110	100	CLIENT
+S3	121	110	100	SERVER
+C4	122	121	100	CLIENT
+S4	122	121	100	SERVER
+X-B3-TraceId
+X-B3-SpanId
+X-B3-ParentSpanId
+
+X-B3-Sampled
+X-B3-Flags
+Running Zipkin via Docker
+9411 
+
+$ docker run -p 9411:9411 \
+-it --name distnode-zipkin \ openzipkin/zipkin-slim:2.19
+
+Transmitting Traces from Node.js
+For this example, you’re going to again start by modifying an existing application. Copy the web-api/consumer-http-basic.js file created in Example 1- 7 to web-api/consumer-http-zipkin.js as a starting point. Modify the file to look like the code in Example 4-9.
+
+Example 4-9. web-api/consumer-http-zipkin.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 node-fetch@2.6 zipkin-lite@0.1 const server = require('fastify')();
+const fetch = require('node-fetch');
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 3000;
+const TARGET = process.env.TARGET || 'localhost:4000'; const ZIPKIN = process.env.ZIPKIN || 'localhost:9411'; const Zipkin = require('zipkin-lite');
+const zipkin = new Zipkin({  zipkinHost: ZIPKIN,
+serviceName: 'web-api', servicePort: PORT, serviceIp: HOST, init: 'short' 
+});
+server.addHook('onRequest', zipkin.onRequest());  server.addHook('onResponse', zipkin.onResponse());
+
+server.get('/', async (req) => { req.zipkin.setName('get_root'); 
+
+const url = `http://${TARGET}/recipes/42`; const zreq = req.zipkin.prepare(); 
+const recipe = await fetch(url, { headers: zreq.headers }); zreq.complete('GET', url);
+const producer_data = await recipe.json();
+
+return {pid: process.pid, producer_data, trace: req.zipkin.trace};
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+zipkin-lite 
+init serviceNameservicePortserviceIp onRequest onResponse zipkin-lite onRequest req.zipkin onResponse SERVER req.zipkin.setName()req.zipkin.prepare()zreqzreq.headerszreq.complete() CLIENT Next up, the producing service should also be modified. This is important because not only should the timing as perceived by the client be reported (web- api in this case), but the timing from the server’s point of view (recipe-api) should be reported as well. Copy the recipe-api/producer-http-basic.js file created in Example 1-6 to recipe-api/producer-http-zipkin.js as a starting point.
+
+Example 4-10. recipe-api/producer-http-zipkin.js (truncated)
+const PORT = process.env.PORT || 4000;
+const ZIPKIN = process.env.ZIPKIN || 'localhost:9411'; const Zipkin = require('zipkin-lite');
+const zipkin = new Zipkin({ zipkinHost: ZIPKIN,
+serviceName: 'recipe-api', servicePort: PORT, serviceIp: HOST,
+});
+server.addHook('onRequest', zipkin.onRequest()); server.addHook('onResponse', zipkin.onResponse());
+
+server.get('/recipes/:id', async (req, reply) => { req.zipkin.setName('get_recipe');
+const id = Number(req.params.id);
+
+init req.zipkin.prepare() Be sure to run the npm install zipkin-lite@0.1 command in both project directories.
+$ node recipe-api/producer-http-zipkin.js
+$ node web-api/consumer-http-zipkin.js
+$ curl http://localhost:3000/
+
+tracecurl e232bb26a7941aabVisualizing a Request Tree
+
+http://localhost:9411/zipkin/
+
+curl Figure 4-8. Zipkin discover interface
+SERVER 
+Figure 4-9. Example Zipkin trace timeline
+Visualizing Microservice Dependencies
+
+Figure 4-10. Example Zipkin dependency view
+
+Health Checks
+
+setInterval() Building a Health Check
+Example 4- 1. Running Postgres and Redis
+$ docker run \
+--rm \
+-p 5432:5432 \
+-e POSTGRES_PASSWORD=hunter2 \
+-e POSTGRES_USER=tmp \
+-e POSTGRES_DB=tmp \ postgres:12.3
+$ docker run \
+--rm \
+-p 6379:6379 \
+redis:6.0
+
+Example 4-12. basic-http-healthcheck.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2 ioredis@4.17 pg@8.3 const server = require('fastify')();
+const HOST = '0.0.0.0';
+const PORT = 3300;
+const redis = new (require("ioredis"))({enableOfflineQueue: false});  const pg = new (require('pg').Client)();
+pg.connect(); // Note: Postgres will not reconnect on failure
+
+server.get('/health', async (req, reply) => { try {
+const res = await pg.query('SELECT $1::text as status', ['ACK']); if (res.rows[0].status !== 'ACK') reply.code(500).send('DOWN');
+} catch(e) { reply.code(500).send('DOWN'); 
+}
+// ... other down checks ... let status = 'OK';
+try {
+if (await redis.ping() !== 'PONG') status = 'DEGRADED';
+} catch(e) {
+status = 'DEGRADED'; 
+}
+// ... other degraded checks ... reply.code(200).send(status);
+});
+
+server.listen(PORT, HOST, () => console.log(`http://${HOST}:${PORT}/`));
+ioredis pg ioredis enableOfflineQueue truefalse
+pg $ PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp \ node basic-http-healthcheck.js
+
+pg Testing the Health Check
+
+$ curl -v http://localhost:3300/health
+
+OK ioredis curl DEGRADEDcurlDEGRADED OK ioredis pg ioredis Alerting with Cabot
+
+Create a Twilio Trial Account
+AC 
+Running Cabot via Docker
+$ git clone git@github.com:cabotapp/docker-cabot.git cabot
+$ cd cabot
+$ git checkout 1f846b96
+
+Example 4-13. config/production.env
+TIME_ZONE=America/Los_Angeles  ADMIN_EMAIL=admin@example.org CABOT_FROM_EMAIL=cabot@example.org DJANGO_SECRET_KEY=abcd1234
+WWW_HTTP_HOST=localhost:5000 WWW_SCHEME=http
+
+# GRAPHITE_API=http://<YOUR-IP-ADDRESS>:8080/ 
+
+TWILIO_ACCOUNT_SID=<YOUR_TWILIO_ACCOUNT_SID>  TWILIO_AUTH_TOKEN=<YOUR_TWILIO_AUTH_TOKEN> TWILIO_OUTGOING_NUMBER=<YOUR_TWILIO_NUMBER>
+$ docker-compose up
+
+Creating a Health Check
+
+adminadmin Table 4-3. Fields for creating a service in Cabot
+Name	Dist Node Service
+<LOCAL_IP> Table 4-4. Fields for creating an HTTP check in Cabot
+Name	Dist Node HTTP Health
+
+Active	checked
+admin Sent from your Twilio trial account - Service Dist Node Service reporting CRITICAL status: http://localhost:5000/service/1/
+
+
+Figure 4-11. Cabot service status screenshot
+$ docker rm cabot_postgres_1 cabot_rabbitmq_1 \ cabot_worker_1 cabot_beat_1 cabot_web_1
+
+
+pagerduty 	Note that process.hrtime() is only useful for getting relative time and can’t be used to get the current time with microsecond accuracy.
+1This example doesn’t persist data to disk and isn’t appropriate for production use.
+
+Chapter 5. Containers
+
+
+
+
+Figure 5-1. Classic versus virtual machines versus containers
+Introduction to Docker
+dockerd docker 
+FROM FROM
+alpine:3.11 alpine 3.11 FROM node:lts- alpine3.11 
+FROM 
+Figure 5-2. Images contain layers, and layers contribute to the filesystem
+docker run npm install $ docker images
+
+REPOSITORY	TAG	IMAGE ID	CREATED	SIZE
+
+grafana/grafana	6.5.2	7a40c3c56100	8	weeks ago	228MB
+grafana/grafana	latest	7a40c3c56100	8	weeks ago	228MB
+openzipkin/zipkin	latest	12ee1ce53834	2	months ago	157MB
+openzipkin/zipkin-slim	2.19	c9db4427dbdd	2	months ago	124MB
+graphiteapp/graphite-statsd	1.1.6-1	5881ff30f9a5	3	months ago	423MB
+sebp/elk	latest	99e6d3f782ad	4	months ago	2.06GB
+
+sebp/elklatest <none>grafana/grafana 6.5.2 latest latest $ docker history grafana/grafana:6.5.2
+
+IMAGE	CREATED BY	SIZE
+7a40c3c56100  /bin/sh -c #(nop)  ENTRYPOINT ["/run.sh"]	0B
+<missing>	/bin/sh -c #(nop) USER grafana	0B
+<missing>	/bin/sh -c #(nop) COPY file:3e1dfb34fa628163…	3.35kB
+<missing>	/bin/sh -c #(nop) EXPOSE 3000	0B
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c mkdir -p…	28.5kB
+<missing>	/bin/sh -c #(nop) COPY dir:200fe8c0cffc35297…	177MB
+
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c if [ `ar…	18.7MB
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c if [ `ar…	15.6MB
+<missing>	|2 GF_GID=472 GF_UID=472 /bin/sh -c apk add …	10.6MB
+... <TRUNCATED RESULTS> ...
+<missing>	/bin/sh -c #(nop) ADD file:fe1f09249227e2da2…	5.55MB
+
+docker history docker pull $ docker pull node:lts-alpine
+
+lts-alpine: Pulling from library/node c9b1b535fdd9: Pull complete
+750cdd924064: Downloading [=====>	] 2.485MB/24.28MB
+2078ab7cf9df: Download complete 02f523899354: Download complete
+
+docker pull node:lts 
+bash $ docker run -it --rm --name ephemeral ubuntu /bin/bash
+
+-i -t -it--rm
+--name
+ubuntu ubuntu:latest/bin/bash ps -e
+PID TTY	TIME CMD
+1 pts/0	00:00:00 bash
+10 pts/0	00:00:00 ps
+
+bashpssystemd initbash $ docker ps
+
+ps 
+CONTAINER ID IMAGE	COMMAND	CREATED	PORTS NAMES
+527847ba22f8 ubuntu "/bin/bash"	11 minutes ago	ephemeral
+
+execdocker exec ephemeral /bin/ls /var exit--rm docker ps docker ps --all -v --
+volume --mount -p --publish 
+$ rm index.html ; curl -o index.html http://example.org
+$ docker run --rm -p 8080:80 \
+-v $PWD:/usr/share/nginx/html nginx
+
+volume publish -p 8080:80-v $PWD:/usr/share/nginx/html -v $PWD .volume mount volume 
+Containerizing a Node.js Service
+chokidar fsevents postinstall preinstall 
+Example 5-1. recipe-api/.dockerignore
+node_modules npm-debug.log Dockerfile
+
+Dependency Stage
+Example 5-2. recipe-api/Dockerfile “deps” stage
+FROM node:14.8.0-alpine3.12 AS deps
+
+WORKDIR /srv
+COPY package*.json ./
+RUN npm ci --only=production
+# COPY package.json yarn.lock ./ # RUN yarn install --production
+
+FROMnode:14.8.0- alpine3.12 FROM 
+depsWORKDIR /srv cd COPY package*.json (specifically package.json and package-lock.json) will be copied to ./ within the container (being the /srv directory). Alternatively, if you prefer to use yarn, you would instead copy the yarn.lock file.
+RUN npm ci -- only=production npm ci npm install yarn install -- productionnpm yarn node Release Stage
+Example 5-3. recipe-api/Dockerfile “release” stage part one	
+
+FROM alpine:3.12 AS release
+
+ENV V 14.8.0
+ENV FILE node-v$V-linux-x64-musl.tar.xz
+
+RUN apk add --no-cache libstdc++ \
+&& apk add --no-cache --virtual .deps curl \ && curl -fsSLO --compressed \
+"https://unofficial-builds.nodejs.org/download/release/v$V/$FILE" \ && tar -xJf $FILE -C /usr/local --strip-components=1 \
+&& rm -f $FILE /usr/local/bin/npm /usr/local/bin/npx \ && rm -rf /usr/local/lib/node_modules \
+&& apk del .deps
+alpine npm yarn alpine V FILE RUN RUN
+apkRUN apk add--no-cache apk 
+libstdc++curl-
+-virtual .deps apk curl tar rm apk del .deps curl Example 5-4. recipe-api/Dockerfile “release” stage part two
+WORKDIR /srv
+COPY --from=deps /srv/node_modules ./node_modules COPY . .
+
+EXPOSE 1337
+ENV HOST 0.0.0.0
+ENV PORT 1337
+CMD [ "node", "producer-http-basic.js" ]
+
+/srvCOPY --from COPY /srv/node_modules directory from the deps stage is being copied to the
+release COPY directory (. with a WORKDIR of /srv). This is where the .dockerignore file comes
+
+deps COPY . EXPOSE ENV HOST PORT 127.0.0.1 CMD node 
+
+From Image to Container
+Example 5-5. Building an image from a Dockerfile
+$ cd recipe-api
+$ docker build -t tlhunter/recipe-api:v0.0.1 .
+docker build -t repository/name:versionv0.0.1latestSending build context to Docker daemon 155.6kB Step 1/15 : FROM node:14.8.0-alpine3.12 AS deps
+---> 532fd65ecacd
+... TRUNCATED ...
+
+Step 15/15 : CMD [ "node", "producer-http-basic.js" ]
+---> Running in d7bde6cfc4dc
+Removing intermediate container d7bde6cfc4dc
+---> a99750d85d81
+Successfully built a99750d85d81
+Successfully tagged tlhunter/recipe-api:v0.0.1
+
+$ docker run --rm --name recipe-api-1 \
+-p 8000:1337 tlhunter/recipe-api:v0.0.1
+
+--rm --name recipe-api-1-p worker pid=1service is listening at http://0.0.0.0:1337. This is the interface and port that the Node.js service is available at within the container.
+
+$ curl http://localhost:8000/recipes/42
+$ docker kill recipe-api-1
+$ npm install --save-exact left-pad@1.3.0
+$ docker history tlhunter/recipe-api:v0.0.1
+$ docker-compose up
+$ curl http://localhost:3000/
+$ curl http://localhost:4000/recipes/42
+$ curl http://localhost:9411/zipkin/
+$ docker rm distributed-node_web-api_1 distributed-node_recipe-api_1 distributed-node_zipkin_1
+$ docker run -d --name distnode-registry -p 5000:5000 --restart=always -v /tmp/registry:/var/lib/registry registry:2.7.1
+
+$ docker image tag tlhunter/recipe-api:v0.0.1 localhost:5000/tlhunter/recipe-api:v0.0.1
+$ time docker push localhost:5000/tlhunter/recipe-api:v0.0.1
+$ docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2
+$ docker rmi tlhunter/recipe-api:v0.0.2
+$ docker run tlhunter/recipe-api:v0.0.2 # should fail
+$ docker pull localhost:5000/tlhunter/recipe-api:v0.0.2
+$ docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2 tlhunter/recipe-api:v0.0.2
+$ docker run tlhunter/recipe-api:v0.0.2 # this time it succeeds
+
+$ docker run --name registry-browser --link distnode-registry -it --rm -p 8080:8080 -e DOCKER_REGISTRY_URL=http://distnode-registry:5000 
+$ docker stop distnode-registry
+$ docker rm distnode-registry
+$ git clone git@github.com:<USERNAME>/distnode-deploy.git
+$ cd distnode-deploy
+$ npm init -y
+$ npm install fastify@3.2
+$ git add .
+$ git commit -m "Application files"
+$ git push
+$ git checkout -b feature-1
+$ git add .
+$ git commit -m "Causing a failure"
+$ git push --set-upstream origin feature-1
+
+$ npm test >distnode-deploy@1.0.0 test /home/travis/build/tlhunter/distnode-deploy >echo "Fake Tests" 
+$ mkdir test
+$ npm install --save-dev tape@5
+$ npm install --save-dev node-fetch@2.6
+$ npm test ; echo "STATUS: $?"
+
+$ npm install --save-dev nyc@15
+$ npm test ; echo "STATUS: $?"
+
+$ git add .
+$ git commit -m "Adding a test suite and code coverage"
+$ git push
+$ git checkout master
+$ git pull
+$ git checkout master
+$ brew install travis
+$ ruby --version # `sudo apt install ruby` if you don't have Ruby
+$ sudo apt-get install ruby2.7-dev # depending on Ruby version
+$ sudo gem install travis
+
+$ travis login --pro --auto-token
+$ travis encrypt --pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>
+$ git add .
+$ git commit -m "Enabling Heroku deployment"
+$ git push
+$ mkdir leftish-padder && cd leftish-padder
+$ npm init
+$ touch index.js README.md foo.js bar.js baz.js
+$ mkdir test && touch test/index.js
+$ npm install --save express@4.17.1
+$ dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin
+$ dd if=/dev/urandom bs=1048576 count=1 of=temp.bin
+$ docker run -it --rm --name verdaccio -p 4873:4873 verdaccio/verdaccio:4.8
+$ npm set registry http://localhost:4873
+$ npm adduser --registry http://localhost:4873
+$ cd leftish-padder
+$ npm publish --registry http://localhost:4873
+$ npm verson patch
+$ npm publish --registry http://localhost:4873
+$ mkdir sample-app && cd sample-app
+$ npm init -y
+$ npm install @<SCOPE>/leftish-padder
+$ echo "console.log(require('@<SCOPE>/leftish-padder')(10, 4, 0));" >app.js
+$ node app.js
+$ npm config delete registry
+$ minikube version
+$ kubectl version --client
+$ minikube start 
+$ minikube start --vm=true
+$ kubectl get pods
+$ kubectl get pods --namespace=kube-system
+$ kubectl get nodes
+$ eval $(minikube -p minikube docker-env)
+$ kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.10
+$ kubectl get deployments
+$ kubectl get pods
+$ kubectl get rs
+$ kubectl get deployments	
+$ kubectl get pods				
+$ kubectl get rs
+$ kubectl get deployments
+$ kubectl get pods	-L	app				
+$ kubectl get rs	
+$ kubectl expose deployment hello-minikube --type=NodePort --port=8080
+$ kubectl get services -o wide
+$ minikube service hello-minikube --url
+$ curl `minikube service hello-minikube --url`http://172.17.0.3:31710`
+$ kubectl delete services hello-minikube
+$ kubectl delete deployment hello-minikube
+$ kubectl get deployments
+$ kubectl get pods
+$ kubectl get rs
+$ cd recipe-api
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t recipe-api:v1 .
+
+$ kubectl apply -f recipe-api/recipe-api-deployment.yml
+
+$ kubectl get pods
+
+$ kubectl describe pods <POD_NAME> | grep Liveness
+
+$ kubectl apply -f recipe-api/recipe-api-network.yml
+
+$ minikube addons enable ingress
+$ kubectl get pods --namespace kube-system | grep ingress
+
+$ cp recipe-api/Dockerfile web-api/Dockerfile
+$ cd web-api
+
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v1 .
+$ kubectl apply -f web-api-deployment.yml
+$ kubectl apply -f web-api-network.yml
+
+$ kubectl get pods -l app=recipe-api
+$ kubectl scale deployment.apps/recipe-api --replicas=10
+$ kubectl get pods -l app=recipe-api
+$ kubectl apply -f recipe-api recipe-api-deployment.yml
+
+$ cd web-api
+$ echo "server.get('/hello', async () => 'Hello');" >> consumer-http-basic.js
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v2 .
+
+$ kubectl get pods -w -l app=web-api
+
+$ curl `minikube service web-api-service --url`/hello
+
+$ kubectl get rs -l app=web-api
+
+$ cd web-api
+
+$ echo "server.get('/kill', async () => { process.exit(42); });" >> consumer-http-basic.js
+
+$ eval $(minikube -p minikube docker-env) # ensure Minikube docker
+$ docker build -t web-api:v3 .
+
+$ kubectl apply -f web-api-deployment.yml --record=true
+
+$ curl `minikube service web-api-service --url`/kill
+
+$ kubectl rollout history deployment.v1.apps/web-api
+
+$ kubectl rollout undo deployment.v1.apps/web-api --to-revision=<RELEASE_NUMBER>
+
+$ kubectl delete services recipe-api-service
+$ kubectl delete services web-api-service
+$ kubectl delete deployment recipe-api
+
+$ kubectl delete deployment web-api
+$ kubectl delete ingress web-api-ingress
+$ minikube stop
+$ minikube delete
+
+$ node -e "throw new Error()" ; echo $?
+
+$ kill -s SIGHUP <PROCESS_ID>
+
+$ kill -9 <PROCESS_ID>
+
+
+$ node caching/server.js
+$ time curl http://localhost:3000/account/tlhunter
+$ time curl http://localhost:3000/account/nodejs
+$ time curl http://localhost:3000/account/tlhunter
+
+$ PORT=4000 node server.js
+$ time curl http://localhost:4000/account/tlhunter
+
+$ docker run --name distnode-memcached -p 11211:11211 -it --rm memcached:1.6-alpine  memcached -m 64 -vv
+
+
+$ PORT=4000 node caching/server-ext.js
+
+$ time curl http://localhost:3000/account/tlhunter # miss
+$ time curl http://localhost:3000/account/tlhunter # hit
+$ time curl http://localhost:4000/account/tlhunter # hit
+
+$ docker run --name distnode-postgres -it --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=user -e POSTGRES_DB=dbconn postgres:12.3
+
+$ curl http://localhost:3000/foo/hello
+
+$ curl http://localhost:3000/health
+
+$ curl http://localhost:3000/foo/hello
+
+$ curl http://localhost:3000/health
+
+$ MAX_CONN=100 node ./dbconn/pool.js
+$ autocannon -c 200 http://localhost:3000/
+
+$ MAX_CONN=101 node ./dbconn/pool.js
+$ autocannon -c 200 http://localhost:3000/
+
+$ mkdir migrations && cd migrations
+$ npm init -y
+$ npm install knex@0.21 pg@8.2
+$ npm install -g knex@0.21
+$ knex init
+
+$ knex migrate:currentVersion
+
+$ knex migrate:make create_users
+
+$ ls migrations
+
+$ knex migrate:list
+
+$ knex migrate:up
+
+$ docker exec -it distnode-postgres \ psql -U user -W dbconn
+
+$ knex migrate:make create_groups
+
+$ knex migrate:latest
+
+$ knex migrate:down
+
+$ docker run -it --rm --name distnode-redis -p 6379:6379 redis:6.0.5-alpine
+
+$ npm init -y
+
+$ npm install ioredis@4.17
+
+$ docker exec distnode-redis redis-cli HSET employee-42 company-id funcorp
+
+$ node redis/transaction.js
+>srem? true hdel? true
+
+$ node redis/script.js
+
+$ echo "console.log('conn:', process.env.REDIS)" > app-env-var.js
+$ REDIS="redis://admin:hunter2@192.168.2.1" node app-env-var.js
+
+$ node -e "console.log(process.env.REDIS)"
+>undefined
+
+$ source dev.env
+
+$ node -e "console.log(process.env.REDIS)"
+>redis://admin:hunter2@192.168.2.1
+
+$ mkdir configuration && cd configuration
+$ npm init -y
+$ mkdir config
+$ touch config/{index,default,development,staging,production}.js
+
+$ mkdir audit && cd audit
+$ npm init -y
+$ npm install js-yaml@3.9.1 hoek@4.2.0
+
+$ npm outdated
+
+$ rm -rf node_modules
+
+$ npm install
+
+$ npm audit
+
+$ npm update js-yaml --depth 1
+
+$ npm update hoek
+
+$ npm audit
+
+$ npm audit --audit-level=high --only=prod ; echo $?
+
+

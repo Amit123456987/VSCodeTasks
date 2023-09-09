@@ -1,0 +1,379 @@
+npm init -y
+${process.pid}`); server.get('/recipes/:id', async (req, reply) => {
+${process.pid}`); const id = Number(req.params.id);
+${HOST}:${PORT}`);
+node recipe-api/producer-http-basic.js # terminal 1
+curl http://127.0.0.1:4000/recipes/42  # terminal 2
+${TARGET}/recipes/42`); const producer_data = await req.json();
+${HOST}:${PORT}/`);
+node web-api/consumer-http-basic.js # terminal 1
+curl http://127.0.0.1:3000/	# terminal 2
+${process.version}`, 'Accept': 'application/json'
+echo "<html><title>Hello World</title></html>" >> index.html
+node server-gzip.js
+curl http://localhost:1337/
+curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | xxd # Request compressed content and decompress
+curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | gunzip
+curl http://localhost:1337/ | wc -c
+curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | wc -c
+mkdir -p ./{recipe-api,shared}/tls
+openssl req -nodes -new -x509 -keyout recipe-api/tls/basic-private-key.key -out shared/tls/basic-certificate.cert
+${HOST}:${PORT}`);
+node recipe-api/producer-https-basic.js	# terminal 1
+curl --insecure https://localhost:4000/recipes/42 # terminal 2
+${TARGET}/recipes/42`, options);
+${HOST}:${PORT}/`);
+node web-api/consumer-https-basic.js # terminal 1
+curl http://localhost:3000/	# terminal 2
+openssl genrsa -des3 -out ca-private-key.key 2048 
+openssl req -x509 -new -nodes -key ca-private-key.key -sha256 -days 365 -out shared/tls/ca-certificate.cert 
+openssl genrsa -out recipe-api/tls/producer-private-key.key 2048 
+openssl req -new -key recipe-api/tls/producer-private-key.key -out recipe-api/tls/producer.csr 
+openssl x509 -req -in recipe-api/tls/producer.csr -CA shared/tls/ca-certificate.cert -CAkey ca-private-key.key -CAcreateserial -out shared/tls/producer-certificate.cert -days 365 -sha256 
+curl http://localhost:3000/
+${id} not found`); return {
+${HOST}:${PORT}/graphql`);
+$id:ID) { 
+$id) { id name ingredients {
+${TARGET}/graphql`, { method: 'POST',
+${HOST}:${PORT}/`);
+$id recipe() variables 
+node recipe-api/producer-graphql.js # terminal 1
+node web-api/consumer-graphql.js	# terminal 2
+curl http://localhost:3000	# terminal 3
+${call.request.id}`));
+${HOST}:${PORT}`, grpc.ServerCredentials.createInsecure(),  (err, port) => {
+${HOST}:${port}/`);
+${HOST}:${PORT}/`);
+node recipe-api/producer-grpc.js # terminal 1
+node web-api/consumer-grpc.js	# terminal 2
+curl http://localhost:3000/	# terminal 3
+${process.pid}`); cluster.setupMaster({
+${address}:${port}`);
+brew install pstree # if using macOS
+pstree <PID> -p -a
+curl http://localhost:4000/recipes/42 # run three times
+kill <pid>
+curl http://localhost:4000/recipes/42 # run three times
+${process.pid}`); server.get('/:limit', async (req, reply) => { 
+${HOST}:${PORT}`);
+npm install -g autocannon@6	# terminal 1
+node master-fibonacci.js	# terminal 1
+autocannon -c 2 http://127.0.0.1:4000/100000 # terminal 2
+taskset -cp 0 <pid> # run for master, worker 1, worker 2
+haproxy -f haproxy/stats.cfg
+node recipe-api/producer-http-basic.js
+PORT=3001 node web-api/consumer-http-healthendpoint.js
+PORT=3002 node web-api/consumer-http-healthendpoint.js
+haproxy -f ./haproxy/load-balance.cfg
+curl http://localhost:3000/ # run several times
+kill <CONSUMER_PID> && curl http://localhost:3000/  && curl http://localhost:3000/
+node recipe-api/producer-http-basic.js
+PORT=3001 node web-api/consumer-http-basic.js
+haproxy -f haproxy/compression.cfg
+curl http://localhost:3000/
+curl -H 'Accept-Encoding: gzip' http://localhost:3000/ | gunzip
+openssl req -nodes -new -x509 -keyout haproxy/private.key -out haproxy/certificate.cert
+cat haproxy/certificate.cert haproxy/private.key >haproxy/combined.pem
+node recipe-api/producer-http-basic.js	# terminal 1
+PORT=3001 node web-api/consumer-http-basic.js # terminal 2
+haproxy -f haproxy/tls.cfg	# terminal 3
+curl --insecure https://localhost:3000/	# terminal 4
+node low-connections.js	# terminal 1
+curl http://localhost:3020/ # terminals 2-4
+node low-connections.js	# terminal 1
+haproxy -f haproxy/backpressure.cfg # terminal 2
+curl http://localhost:3010/	# terminals 3-5
+npm install -g autocannon@6
+${HOST}:${PORT}`);
+node benchmark/native-http.js
+autocannon -d 60 -c 10 -l http://localhost:4000/
+node benchmark/native-http.js
+haproxy -f haproxy/benchmark-basic.cfg
+autocannon -d 60 -c 10 -l http://localhost:4001
+rm index.html ; curl -o index.html https://thomashunter.name
+PORT=3001 node server-gzip.js
+haproxy -f haproxy/passthru.cfg
+autocannon -H "Accept-Encoding: gzip" -d 60 -c 10 -l http://localhost:3000/ # Node.js # Kill the previous haproxy process
+haproxy -f haproxy/compression.cfg
+autocannon -H "Accept-Encoding: gzip" -d 60 -c 10 -l http://localhost:3000/ # HAProxy
+PORT=3001 node recipe-api/producer-https-basic.js
+haproxy -f haproxy/passthru.cfg
+autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+PORT=3001 node recipe-api/producer-http-basic.js
+haproxy -f haproxy/tls.cfg
+autocannon -d 60 -c 10 https://localhost:3000/recipes/42
+HOST=0.0.0.0 node recipe-api/producer-http-basic.js # Client VPS
+TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js
+autocannon -d 60 -c 10 -l http://localhost:3000
+HOST=0.0.0.0 node recipe-api/producer-graphql.js # Client VPS
+TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js
+autocannon -d 60 -c 10 -l http://localhost:3000
+HOST=0.0.0.0 node recipe-api/producer-grpc.js # Client VPS
+TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js
+autocannon -d 60 -c 10 -l http://localhost:3000
+PORT=5001 node cluster-fibonacci.js # later run with 5002 & 5003
+haproxy -f haproxy/fibonacci.cfg
+autocannon -d 60 -c 10 -R 10 http://localhost:5000/10000
+export NODE_ENV=production 
+node server.js
+sudo sysctl -w vm.max_map_count=262144 # Linux Only
+docker run -p 5601:5601 -p 9200:9200 -p 5044:5044 -p 7777:7777/udp -v $PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf -e MAX_MAP_COUNT=262144 -it --name distnode-elk sebp/elk:683
+${TARGET}/recipes/42`;
+NODE_ENV=development LOGSTASH=localhost:7777 node recipe-api/producer-http-basic.js
+brew install watch # required for macOS
+watch -n5 curl http://localhost:3000
+watch -n13 curl http://localhost:3000/error
+docker run -p 8080:80 -p 8125:8125/udp -it --name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1
+docker run -p 8000:3000 -it --name distnode-grafana grafana/grafana:6.5.2
+${TARGET}/recipes/42`); statsd.timing('outbound.recipe-api.request-time', begin);  statsd.increment('outbound.recipe-api.request-count');  const producer_data = await req.json();
+${HOST}:${PORT}/`);
+NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js
+node recipe-api/producer-http-basic.js
+autocannon -d 300 -R 5 -c 1 http://localhost:3000
+watch -n1 curl http://localhost:3000/error
+docker run -p 9411:9411 -it --name distnode-zipkin  openzipkin/zipkin-slim:2.19
+${TARGET}/recipes/42`; const zreq = req.zipkin.prepare(); 
+${HOST}:${PORT}/`);
+node recipe-api/producer-http-zipkin.js
+node web-api/consumer-http-zipkin.js
+curl http://localhost:3000/
+docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=tmp -e POSTGRES_DB=tmp  postgres:12.3
+docker run --rm -p 6379:6379 redis:6.0
+$1::text as status', ['ACK']); if (res.rows[0].status !== 'ACK') reply.code(500).send('DOWN');
+${HOST}:${PORT}/`));
+PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp curl -v http://localhost:3300/health
+git clone git@github.com:cabotapp/docker-cabot.git cabot
+cd cabot
+git checkout 1f846b96
+docker-compose up
+docker rm cabot_postgres_1 cabot_rabbitmq_1 docker images
+docker history grafana/grafana:6.5.2
+docker pull node:lts-alpine
+docker run -it --rm --name ephemeral ubuntu /bin/bash
+docker ps
+rm index.html ; curl -o index.html http://example.org
+docker run --rm -p 8080:80 -v $PWD:/usr/share/nginx/html nginx
+$PWD:/usr/share/nginx/html -v $PWD .volume mount volume 
+$V-linux-x64-musl.tar.xz
+&& apk add --no-cache --virtual .deps curl  && curl -fsSLO --compressed "https://unofficial-builds.nodejs.org/download/release/v$V/$FILE"  && tar -xJf $FILE -C /usr/local --strip-components=1 && rm -f $FILE /usr/local/bin/npm /usr/local/bin/npx  && rm -rf /usr/local/lib/node_modules && apk del .deps
+cd recipe-api
+docker build -t tlhunter/recipe-api:v0.0.1 .
+docker run --rm --name recipe-api-1 -p 8000:1337 tlhunter/recipe-api:v0.0.1
+curl http://localhost:8000/recipes/42
+docker kill recipe-api-1
+npm install --save-exact left-pad@1.3.0
+docker history tlhunter/recipe-api:v0.0.1
+docker-compose up
+curl http://localhost:3000/
+curl http://localhost:4000/recipes/42
+curl http://localhost:9411/zipkin/
+docker rm distributed-node_web-api_1 distributed-node_recipe-api_1 distributed-node_zipkin_1
+docker run -d --name distnode-registry -p 5000:5000 --restart=always -v /tmp/registry:/var/lib/registry  registry:2.7.1
+docker image tag tlhunter/recipe-api:v0.0.1 time docker push localhost:5000/tlhunter/recipe-api:v0.0.1
+docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2
+docker rmi tlhunter/recipe-api:v0.0.2
+docker run tlhunter/recipe-api:v0.0.2 # should fail
+docker pull localhost:5000/tlhunter/recipe-api:v0.0.2
+docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2 tlhunter/recipe-api:v0.0.2
+docker run tlhunter/recipe-api:v0.0.2 # this time it succeeds
+docker run --name registry-browser --link distnode-registry -it --rm -p 8080:8080 -e DOCKER_REGISTRY_URL=http://distnode-registry:5000  klausmeyer/docker-registry-browser:1.3.2
+docker stop distnode-registry
+docker rm distnode-registry
+git clone git@github.com:<USERNAME>/distnode-deploy.git
+cd distnode-deploy
+npm init -y
+npm install fastify@3.2
+${host}`);
+${this.id}`;
+git add .
+git commit -m "Application files"
+git push
+git checkout -b feature-1
+git add .
+git commit -m "Causing a failure"
+git push --set-upstream origin feature-1
+npm test
+mkdir test
+npm install --save-dev tape@5
+npm test ; echo "STATUS: $?"
+npm install --save-dev node-fetch@2.6
+$/.exec(message)[1]; resolve({ server, url }); 
+${url}/recipes/42`); const body = await result.json(); t.equal(body.id, 42);
+npm test ; echo "STATUS: $?"
+npm install --save-dev nyc@15
+npm test ; echo "STATUS: $?"
+${url}/`);
+npm test ; echo "STATUS: $?"
+git add .
+git commit -m "Adding a test suite and code coverage"
+git push
+git checkout master
+git pull
+git checkout master
+brew install travis
+ruby --version # `sudo apt install ruby` if you don't have Ruby
+sudo apt-get install ruby2.7-dev # depending on Ruby version
+sudo gem install travis
+travis login --pro --auto-token
+travis encrypt --pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>
+git add .
+git commit -m "Enabling Heroku deployment"
+git push
+mkdir leftish-padder && cd leftish-padder
+npm init
+touch index.js README.md foo.js bar.js baz.js
+mkdir test && touch test/index.js
+npm install --save express@4.17.1
+dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin
+dd if=/dev/urandom bs=1048576 count=1 of=temp.bin
+docker run -it --rm --name verdaccio -p 4873:4873 verdaccio/verdaccio:4.8
+npm set registry http://localhost:4873
+npm adduser --registry http://localhost:4873
+cd leftish-padder
+npm publish --registry http://localhost:4873
+npm verson patch
+npm publish --registry http://localhost:4873
+mkdir sample-app && cd sample-app
+npm init -y
+npm install @<SCOPE>/leftish-padder
+echo "console.log(require('@<SCOPE>/leftish-padder')(10, 4, 0));" >app.js
+node app.js
+npm config delete registry
+minikube version
+kubectl version --client
+minikube start # MacOS:
+minikube start --vm=true
+kubectl get pods
+kubectl get pods --namespace=kube-system
+kubectl get nodes
+eval $(minikube -p minikube docker-env)
+minikube dashboard
+kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.10
+kubectl get deployments
+kubectl get pods
+kubectl get rs
+$	kubectl get deployments	
+$	kubectl get pods				
+kubectl get rs
+$	kubectl get deployments
+$	kubectl get pods	-L	app				
+$	kubectl get rs	
+kubectl expose deployment hello-minikube --type=NodePort --port=8080
+kubectl get services -o wide
+minikube service hello-minikube --url
+curl `minikube service hello-minikube --url`
+kubectl delete services hello-minikube
+kubectl delete deployment hello-minikube
+kubectl get deployments
+kubectl get pods
+kubectl get rs
+cd recipe-api
+eval $(minikube -p minikube docker-env) # ensure Minikube docker
+docker build -t recipe-api:v1 .
+kubectl apply -f recipe-api/recipe-api-deployment.yml
+kubectl get pods
+kubectl describe pods <POD_NAME> | grep Liveness
+kubectl apply -f recipe-api/recipe-api-network.yml
+minikube addons enable ingress
+kubectl get pods --namespace kube-system | grep ingress
+cp recipe-api/Dockerfile web-api/Dockerfile
+cd web-api
+$1
+eval $(minikube -p minikube docker-env) # ensure Minikube docker
+docker build -t web-api:v1 .
+kubectl apply -f web-api-deployment.yml
+kubectl apply -f web-api-network.yml
+kubectl get ingress web-api-ingress
+curl -H "Host: example.org" http://<INGRESS_IP>/
+kubectl get pods -l app=recipe-api
+kubectl scale deployment.apps/recipe-api --replicas=10
+kubectl get pods -l app=recipe-api
+kubectl apply -f recipe-api/recipe-api-deployment.yml
+cd web-api
+echo "server.get('/hello', async () => 'Hello');" >> consumer-http-basic.js
+eval $(minikube -p minikube docker-env) # ensure Minikube docker
+docker build -t web-api:v2 .
+kubectl apply -f web-api-deployment.yml
+kubectl get pods -w -l app=web-api
+curl `minikube service web-api-service --url`/hello
+kubectl get rs -l app=web-api
+cd web-api
+echo "server.get('/kill', async () => { process.exit(42); });" >> consumer-http-basic.js
+eval $(minikube -p minikube docker-env) # ensure Minikube docker
+docker build -t web-api:v3 .
+kubectl apply -f web-api-deployment.yml --record=true
+curl `minikube service web-api-service --url`/kill
+kubectl rollout history deployment.v1.apps/web-api
+kubectl rollout undo deployment.v1.apps/web-api --to-revision=<RELEASE_NUMBER>
+kubectl delete services recipe-api-service
+kubectl delete services web-api-service
+kubectl delete deployment recipe-api
+kubectl delete deployment web-api
+kubectl delete ingress web-api-ingress
+minikube stop
+minikube delete
+node -e "process.exit(42)" ; echo $?
+node -e "throw new Error()" ; echo $?
+${process.pid}`); process.on('SIGHUP', () => console.log('Received: SIGHUP')); process.on('SIGINT', () => console.log('Received: SIGINT')); setTimeout(() => {}, 5 * 60 * 1000); // keep process alive
+kill -s SIGHUP <PROCESS_ID>
+node -e "process.kill(<PROCESS_ID>, 'SIGHUP')"
+kill -9 <PROCESS_ID>
+${id}`, { method: 'patch', body }); doSomethingRisky();
+${id}`, { method: 'patch', body }); return 'OK';
+${PORT}`));
+${account}`); const body = await result.text();
+node caching/server.js
+time curl http://localhost:3000/account/tlhunter
+time curl http://localhost:3000/account/nodejs
+time curl http://localhost:3000/account/tlhunter
+PORT=4000 node server.js
+time curl http://localhost:4000/account/tlhunter
+docker run --name distnode-memcached -p 11211:11211 -it --rm memcached:1.6-alpine  memcached -m 64 -vv
+${PORT}`));
+${account}`); const body = await result.text();
+node caching/server-ext.js
+PORT=4000 node caching/server-ext.js
+time curl http://localhost:3000/account/tlhunter # miss
+time curl http://localhost:3000/account/tlhunter # hit
+time curl http://localhost:4000/account/tlhunter # hit
+${account_id}`;
+docker run --name distnode-postgres -it --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=user -e POSTGRES_DB=dbconn  postgres:12.3
+$1 AS echo', [req.params.foo_id]);
+curl http://localhost:3000/foo/hello
+curl http://localhost:3000/health
+curl http://localhost:3000/foo/hello
+curl http://localhost:3000/health
+MAX_CONN=100 node ./dbconn/pool.js
+autocannon -c 200 http://localhost:3000/
+MAX_CONN=101 node ./dbconn/pool.js
+autocannon -c 200 http://localhost:3000/
+${(Date.now() - start) / 1000} seconds`); db.end();
+mkdir migrations && cd migrations
+npm init -y
+npm install knex@0.21 pg@8.2
+npm install -g knex@0.21
+knex init
+knex migrate:currentVersion
+knex migrate:make create_users
+ls migrations
+knex migrate:list
+knex migrate:up
+docker exec -it distnode-postgres  psql -U user -W dbconn
+knex migrate:make create_groups
+knex migrate:latest
+knex migrate:down
+$1', [id]); const person = result.rows[0];
+$1, lname = $2 WHERE id = $3', [fname, lname, id]);
+$1', [id]); const person = result.rows[0];
+${person.fname} ${person.lname}`; return { id, name };
+$1 WHERE id = $2', [name, id]);
+$1', [id]); return { id, name: result.rows[0].name };
+${id}.txt`, url);
+${id}`;
+${code}.txt`).toString();
+docker run -it --rm --name distnode-redis -p 6379:6379 redis:6.0.5-alpine
+echo "PINGdocker exec -it mkdir redis && cd redis
+npm init -y
+npm install ioredis@4.17
+node redis/basic.js

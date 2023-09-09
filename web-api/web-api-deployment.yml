@@ -1,0 +1,1 @@
+apiVersion: apps/v1 kind: Deployment metadata:name: web-api labels:app: web-apispec:replicas: 3  selector:matchLabels: app: web-apitemplate: metadata:labels:app: web-api#### note the four space indent spec:containers:value: "recipe-api-service"

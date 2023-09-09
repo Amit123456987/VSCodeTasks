@@ -1,87 +1,2278 @@
 {
-  "version": "2.0.0",
   "tasks": [
     {
-      "label": "docker images",
+      "label": "npm init -y\n",
       "type": "shell",
-      "command": "docker images",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "1", "dependsOn": ["docker images"] },
-    {
-      "label": "docker history grafana/grafana",
-      "type": "shell",
-      "command": "docker history grafana/grafana:6.5.2",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "2", "dependsOn": ["docker history grafana/grafana"] },
-    {
-      "label": "docker pull node:lts-alpine",
-      "type": "shell",
-      "command": "docker pull node:lts-alpine",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "3", "dependsOn": ["docker pull node:lts-alpine"] },
-    {
-      "label": "docker run -it --rm --name eph",
-      "type": "shell",
-      "command": "docker run -it --rm --name ephemeral ubuntu /bin/bash",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "4", "dependsOn": ["docker run -it --rm --name eph"] },
-    {
-      "label": "docker ps",
-      "type": "shell",
-      "command": "docker ps",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "5", "dependsOn": ["docker ps"] },
-    {
-      "label": "docker exec ephemeral /bin/ls ",
-      "type": "shell",
-      "command": "docker exec ephemeral /bin/ls /var",
-      "presentation": { "panel": "new" },
-      "hide": true
-    },
-    { "label": "6", "dependsOn": ["docker exec ephemeral /bin/ls "] },
-    {
-      "label": "",
-      "type": "shell",
-      "command": "",
-      "presentation": { "panel": "new" },
-      "hide": true
+      "command": "npm init -y\n",
+      "presentation": { "panel": "new" }
     },
     {
-      "label": "rm index.html ; curl -o index.",
+      "label": "${process.pid}`); server.get('/recipes/:id', async (req, reply) => {\n",
       "type": "shell",
-      "command": "rm index.html ; curl -o index.html http://example.org",
-      "presentation": { "panel": "new" },
-      "hide": true
+      "command": "${process.pid}`); server.get('/recipes/:id', async (req, reply) => {\n",
+      "presentation": { "panel": "new" }
     },
     {
-      "label": "docker run --rm -p 8080:80 -v",
+      "label": "${process.pid}`); const id = Number(req.params.id);\n",
       "type": "shell",
-      "command": "docker run --rm -p 8080:80 -v",
-      "presentation": { "panel": "new" },
-      "hide": true
+      "command": "${process.pid}`); const id = Number(req.params.id);\n",
+      "presentation": { "panel": "new" }
     },
     {
-      "label": "PWD:/usr/share/nginx/html ngin",
+      "label": "${HOST}:${PORT}`);\n",
       "type": "shell",
-      "command": "PWD:/usr/share/nginx/html nginx",
-      "presentation": { "panel": "new" },
-      "hide": true
+      "command": "${HOST}:${PORT}`);\n",
+      "presentation": { "panel": "new" }
     },
     {
-      "label": "7",
-      "dependsOn": ["rm index.html ; curl -o index.",
-        "docker run --rm -p 8080:80 -v PWD:/usr/share/nginx/html nginx"
-      ]
+      "label": "node recipe-api/producer-http-basic.js # terminal 1\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-basic.js # terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://127.0.0.1:4000/recipes/42  # terminal 2\n",
+      "type": "shell",
+      "command": "curl http://127.0.0.1:4000/recipes/42  # terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/recipes/42`); const producer_data = await req.json();\n",
+      "type": "shell",
+      "command": "${TARGET}/recipes/42`); const producer_data = await req.json();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node web-api/consumer-http-basic.js # terminal 1\n",
+      "type": "shell",
+      "command": "node web-api/consumer-http-basic.js # terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://127.0.0.1:3000/\t# terminal 2\n",
+      "type": "shell",
+      "command": "curl http://127.0.0.1:3000/\t# terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${process.version}`, 'Accept': 'application/json'\n",
+      "type": "shell",
+      "command": "${process.version}`, 'Accept': 'application/json'\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "echo \"<html><title>Hello World</title></html>\" >> index.html\n",
+      "type": "shell",
+      "command": "echo \"<html><title>Hello World</title></html>\" >> index.html\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node server-gzip.js\n",
+      "type": "shell",
+      "command": "node server-gzip.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:1337/\n",
+      "type": "shell",
+      "command": "curl http://localhost:1337/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | xxd # Request compressed content and decompress\n",
+      "type": "shell",
+      "command": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | xxd # Request compressed content and decompress\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | gunzip\n",
+      "type": "shell",
+      "command": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | gunzip\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:1337/ | wc -c\n",
+      "type": "shell",
+      "command": "curl http://localhost:1337/ | wc -c\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | wc -c\n",
+      "type": "shell",
+      "command": "curl -H 'Accept-Encoding: gzip' http://localhost:1337/ | wc -c\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir -p ./{recipe-api,shared}/tls\n",
+      "type": "shell",
+      "command": "mkdir -p ./{recipe-api,shared}/tls\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl req -nodes -new -x509 -keyout recipe-api/tls/basic-private-key.key -out shared/tls/basic-certificate.cert\n",
+      "type": "shell",
+      "command": "openssl req -nodes -new -x509 -keyout recipe-api/tls/basic-private-key.key -out shared/tls/basic-certificate.cert\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-https-basic.js\t# terminal 1\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-https-basic.js\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl --insecure https://localhost:4000/recipes/42 # terminal 2\n",
+      "type": "shell",
+      "command": "curl --insecure https://localhost:4000/recipes/42 # terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/recipes/42`, options);\n",
+      "type": "shell",
+      "command": "${TARGET}/recipes/42`, options);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node web-api/consumer-https-basic.js # terminal 1\n",
+      "type": "shell",
+      "command": "node web-api/consumer-https-basic.js # terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\t# terminal 2\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\t# terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl genrsa -des3 -out ca-private-key.key 2048 \n",
+      "type": "shell",
+      "command": "openssl genrsa -des3 -out ca-private-key.key 2048 \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl req -x509 -new -nodes -key ca-private-key.key -sha256 -days 365 -out shared/tls/ca-certificate.cert \n",
+      "type": "shell",
+      "command": "openssl req -x509 -new -nodes -key ca-private-key.key -sha256 -days 365 -out shared/tls/ca-certificate.cert \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl genrsa -out recipe-api/tls/producer-private-key.key 2048 \n",
+      "type": "shell",
+      "command": "openssl genrsa -out recipe-api/tls/producer-private-key.key 2048 \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl req -new -key recipe-api/tls/producer-private-key.key -out recipe-api/tls/producer.csr \n",
+      "type": "shell",
+      "command": "openssl req -new -key recipe-api/tls/producer-private-key.key -out recipe-api/tls/producer.csr \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl x509 -req -in recipe-api/tls/producer.csr -CA shared/tls/ca-certificate.cert -CAkey ca-private-key.key -CAcreateserial -out shared/tls/producer-certificate.cert -days 365 -sha256 \n",
+      "type": "shell",
+      "command": "openssl x509 -req -in recipe-api/tls/producer.csr -CA shared/tls/ca-certificate.cert -CAkey ca-private-key.key -CAcreateserial -out shared/tls/producer-certificate.cert -days 365 -sha256 \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${id} not found`); return {\n",
+      "type": "shell",
+      "command": "${id} not found`); return {\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/graphql`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/graphql`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$id:ID) { \n",
+      "type": "shell",
+      "command": "$id:ID) { \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$id) { id name ingredients {\n",
+      "type": "shell",
+      "command": "$id) { id name ingredients {\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/graphql`, { method: 'POST',\n",
+      "type": "shell",
+      "command": "${TARGET}/graphql`, { method: 'POST',\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$id recipe() variables \n",
+      "type": "shell",
+      "command": "$id recipe() variables \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-graphql.js # terminal 1\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-graphql.js # terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node web-api/consumer-graphql.js\t# terminal 2\n",
+      "type": "shell",
+      "command": "node web-api/consumer-graphql.js\t# terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000\t# terminal 3\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000\t# terminal 3\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${call.request.id}`));\n",
+      "type": "shell",
+      "command": "${call.request.id}`));\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}`, grpc.ServerCredentials.createInsecure(),  (err, port) => {\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}`, grpc.ServerCredentials.createInsecure(),  (err, port) => {\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${port}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${port}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-grpc.js # terminal 1\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-grpc.js # terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node web-api/consumer-grpc.js\t# terminal 2\n",
+      "type": "shell",
+      "command": "node web-api/consumer-grpc.js\t# terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\t# terminal 3\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\t# terminal 3\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${process.pid}`); cluster.setupMaster({\n",
+      "type": "shell",
+      "command": "${process.pid}`); cluster.setupMaster({\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${address}:${port}`);\n",
+      "type": "shell",
+      "command": "${address}:${port}`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "brew install pstree # if using macOS\n",
+      "type": "shell",
+      "command": "brew install pstree # if using macOS\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "pstree <PID> -p -a\n",
+      "type": "shell",
+      "command": "pstree <PID> -p -a\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:4000/recipes/42 # run three times\n",
+      "type": "shell",
+      "command": "curl http://localhost:4000/recipes/42 # run three times\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kill <pid>\n",
+      "type": "shell",
+      "command": "kill <pid>\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:4000/recipes/42 # run three times\n",
+      "type": "shell",
+      "command": "curl http://localhost:4000/recipes/42 # run three times\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${process.pid}`); server.get('/:limit', async (req, reply) => { \n",
+      "type": "shell",
+      "command": "${process.pid}`); server.get('/:limit', async (req, reply) => { \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install -g autocannon@6\t# terminal 1\n",
+      "type": "shell",
+      "command": "npm install -g autocannon@6\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node master-fibonacci.js\t# terminal 1\n",
+      "type": "shell",
+      "command": "node master-fibonacci.js\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -c 2 http://127.0.0.1:4000/100000 # terminal 2\n",
+      "type": "shell",
+      "command": "autocannon -c 2 http://127.0.0.1:4000/100000 # terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "taskset -cp 0 <pid> # run for master, worker 1, worker 2\n",
+      "type": "shell",
+      "command": "taskset -cp 0 <pid> # run for master, worker 1, worker 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/stats.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/stats.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-http-basic.js\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node web-api/consumer-http-healthendpoint.js\n",
+      "type": "shell",
+      "command": "PORT=3001 node web-api/consumer-http-healthendpoint.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3002 node web-api/consumer-http-healthendpoint.js\n",
+      "type": "shell",
+      "command": "PORT=3002 node web-api/consumer-http-healthendpoint.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f ./haproxy/load-balance.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f ./haproxy/load-balance.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/ # run several times\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/ # run several times\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kill <CONSUMER_PID> && curl http://localhost:3000/  && curl http://localhost:3000/\n",
+      "type": "shell",
+      "command": "kill <CONSUMER_PID> && curl http://localhost:3000/  && curl http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-http-basic.js\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node web-api/consumer-http-basic.js\n",
+      "type": "shell",
+      "command": "PORT=3001 node web-api/consumer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/compression.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/compression.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl -H 'Accept-Encoding: gzip' http://localhost:3000/ | gunzip\n",
+      "type": "shell",
+      "command": "curl -H 'Accept-Encoding: gzip' http://localhost:3000/ | gunzip\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "openssl req -nodes -new -x509 -keyout haproxy/private.key -out haproxy/certificate.cert\n",
+      "type": "shell",
+      "command": "openssl req -nodes -new -x509 -keyout haproxy/private.key -out haproxy/certificate.cert\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cat haproxy/certificate.cert haproxy/private.key >haproxy/combined.pem\n",
+      "type": "shell",
+      "command": "cat haproxy/certificate.cert haproxy/private.key >haproxy/combined.pem\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-http-basic.js\t# terminal 1\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-basic.js\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node web-api/consumer-http-basic.js # terminal 2\n",
+      "type": "shell",
+      "command": "PORT=3001 node web-api/consumer-http-basic.js # terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/tls.cfg\t# terminal 3\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/tls.cfg\t# terminal 3\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl --insecure https://localhost:3000/\t# terminal 4\n",
+      "type": "shell",
+      "command": "curl --insecure https://localhost:3000/\t# terminal 4\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node low-connections.js\t# terminal 1\n",
+      "type": "shell",
+      "command": "node low-connections.js\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3020/ # terminals 2-4\n",
+      "type": "shell",
+      "command": "curl http://localhost:3020/ # terminals 2-4\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node low-connections.js\t# terminal 1\n",
+      "type": "shell",
+      "command": "node low-connections.js\t# terminal 1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/backpressure.cfg # terminal 2\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/backpressure.cfg # terminal 2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3010/\t# terminals 3-5\n",
+      "type": "shell",
+      "command": "curl http://localhost:3010/\t# terminals 3-5\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install -g autocannon@6\n",
+      "type": "shell",
+      "command": "npm install -g autocannon@6\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node benchmark/native-http.js\n",
+      "type": "shell",
+      "command": "node benchmark/native-http.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -l http://localhost:4000/\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -l http://localhost:4000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node benchmark/native-http.js\n",
+      "type": "shell",
+      "command": "node benchmark/native-http.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/benchmark-basic.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/benchmark-basic.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -l http://localhost:4001\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -l http://localhost:4001\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "rm index.html ; curl -o index.html https://thomashunter.name\n",
+      "type": "shell",
+      "command": "rm index.html ; curl -o index.html https://thomashunter.name\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node server-gzip.js\n",
+      "type": "shell",
+      "command": "PORT=3001 node server-gzip.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/passthru.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/passthru.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -H \"Accept-Encoding: gzip\" -d 60 -c 10 -l http://localhost:3000/ # Node.js # Kill the previous haproxy process\n",
+      "type": "shell",
+      "command": "autocannon -H \"Accept-Encoding: gzip\" -d 60 -c 10 -l http://localhost:3000/ # Node.js # Kill the previous haproxy process\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/compression.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/compression.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -H \"Accept-Encoding: gzip\" -d 60 -c 10 -l http://localhost:3000/ # HAProxy\n",
+      "type": "shell",
+      "command": "autocannon -H \"Accept-Encoding: gzip\" -d 60 -c 10 -l http://localhost:3000/ # HAProxy\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node recipe-api/producer-https-basic.js\n",
+      "type": "shell",
+      "command": "PORT=3001 node recipe-api/producer-https-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/passthru.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/passthru.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 https://localhost:3000/recipes/42\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 https://localhost:3000/recipes/42\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=3001 node recipe-api/producer-http-basic.js\n",
+      "type": "shell",
+      "command": "PORT=3001 node recipe-api/producer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/tls.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/tls.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 https://localhost:3000/recipes/42\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 https://localhost:3000/recipes/42\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "HOST=0.0.0.0 node recipe-api/producer-http-basic.js # Client VPS\n",
+      "type": "shell",
+      "command": "HOST=0.0.0.0 node recipe-api/producer-http-basic.js # Client VPS\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js\n",
+      "type": "shell",
+      "command": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "HOST=0.0.0.0 node recipe-api/producer-graphql.js # Client VPS\n",
+      "type": "shell",
+      "command": "HOST=0.0.0.0 node recipe-api/producer-graphql.js # Client VPS\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js\n",
+      "type": "shell",
+      "command": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-graphql.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "HOST=0.0.0.0 node recipe-api/producer-grpc.js # Client VPS\n",
+      "type": "shell",
+      "command": "HOST=0.0.0.0 node recipe-api/producer-grpc.js # Client VPS\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js\n",
+      "type": "shell",
+      "command": "TARGET=<RECIPE_API_IP>:4000 node web-api/consumer-grpc.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -l http://localhost:3000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=5001 node cluster-fibonacci.js # later run with 5002 & 5003\n",
+      "type": "shell",
+      "command": "PORT=5001 node cluster-fibonacci.js # later run with 5002 & 5003\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "haproxy -f haproxy/fibonacci.cfg\n",
+      "type": "shell",
+      "command": "haproxy -f haproxy/fibonacci.cfg\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 60 -c 10 -R 10 http://localhost:5000/10000\n",
+      "type": "shell",
+      "command": "autocannon -d 60 -c 10 -R 10 http://localhost:5000/10000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "export NODE_ENV=production \n",
+      "type": "shell",
+      "command": "export NODE_ENV=production \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node server.js\n",
+      "type": "shell",
+      "command": "node server.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "sudo sysctl -w vm.max_map_count=262144 # Linux Only\n",
+      "type": "shell",
+      "command": "sudo sysctl -w vm.max_map_count=262144 # Linux Only\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -p 5601:5601 -p 9200:9200 -p 5044:5044 -p 7777:7777/udp -v $PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf -e MAX_MAP_COUNT=262144 -it --name distnode-elk sebp/elk:683\n",
+      "type": "shell",
+      "command": "docker run -p 5601:5601 -p 9200:9200 -p 5044:5044 -p 7777:7777/udp -v $PWD/misc/elk/udp.conf:/etc/logstash/conf.d/99-input-udp.conf -e MAX_MAP_COUNT=262144 -it --name distnode-elk sebp/elk:683\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/recipes/42`;\n",
+      "type": "shell",
+      "command": "${TARGET}/recipes/42`;\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "NODE_ENV=development LOGSTASH=localhost:7777 node recipe-api/producer-http-basic.js\n",
+      "type": "shell",
+      "command": "NODE_ENV=development LOGSTASH=localhost:7777 node recipe-api/producer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "brew install watch # required for macOS\n",
+      "type": "shell",
+      "command": "brew install watch # required for macOS\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "watch -n5 curl http://localhost:3000\n",
+      "type": "shell",
+      "command": "watch -n5 curl http://localhost:3000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "watch -n13 curl http://localhost:3000/error\n",
+      "type": "shell",
+      "command": "watch -n13 curl http://localhost:3000/error\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -p 8080:80 -p 8125:8125/udp -it --name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1\n",
+      "type": "shell",
+      "command": "docker run -p 8080:80 -p 8125:8125/udp -it --name distnode-graphite graphiteapp/graphite-statsd:1.1.6-1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -p 8000:3000 -it --name distnode-grafana grafana/grafana:6.5.2\n",
+      "type": "shell",
+      "command": "docker run -p 8000:3000 -it --name distnode-grafana grafana/grafana:6.5.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/recipes/42`); statsd.timing('outbound.recipe-api.request-time', begin);  statsd.increment('outbound.recipe-api.request-count');  const producer_data = await req.json();\n",
+      "type": "shell",
+      "command": "${TARGET}/recipes/42`); statsd.timing('outbound.recipe-api.request-time', begin);  statsd.increment('outbound.recipe-api.request-count');  const producer_data = await req.json();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js\n",
+      "type": "shell",
+      "command": "NODE_DEBUG=statsd-client node web-api/consumer-http-metrics.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-http-basic.js\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -d 300 -R 5 -c 1 http://localhost:3000\n",
+      "type": "shell",
+      "command": "autocannon -d 300 -R 5 -c 1 http://localhost:3000\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "watch -n1 curl http://localhost:3000/error\n",
+      "type": "shell",
+      "command": "watch -n1 curl http://localhost:3000/error\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -p 9411:9411 -it --name distnode-zipkin  openzipkin/zipkin-slim:2.19\n",
+      "type": "shell",
+      "command": "docker run -p 9411:9411 -it --name distnode-zipkin  openzipkin/zipkin-slim:2.19\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${TARGET}/recipes/42`; const zreq = req.zipkin.prepare(); \n",
+      "type": "shell",
+      "command": "${TARGET}/recipes/42`; const zreq = req.zipkin.prepare(); \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`);\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node recipe-api/producer-http-zipkin.js\n",
+      "type": "shell",
+      "command": "node recipe-api/producer-http-zipkin.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node web-api/consumer-http-zipkin.js\n",
+      "type": "shell",
+      "command": "node web-api/consumer-http-zipkin.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=tmp -e POSTGRES_DB=tmp  postgres:12.3\n",
+      "type": "shell",
+      "command": "docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=tmp -e POSTGRES_DB=tmp  postgres:12.3\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --rm -p 6379:6379 redis:6.0\n",
+      "type": "shell",
+      "command": "docker run --rm -p 6379:6379 redis:6.0\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1::text as status', ['ACK']); if (res.rows[0].status !== 'ACK') reply.code(500).send('DOWN');\n",
+      "type": "shell",
+      "command": "$1::text as status', ['ACK']); if (res.rows[0].status !== 'ACK') reply.code(500).send('DOWN');\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${HOST}:${PORT}/`));\n",
+      "type": "shell",
+      "command": "${HOST}:${PORT}/`));\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp curl -v http://localhost:3300/health\n",
+      "type": "shell",
+      "command": "PGUSER=tmp PGPASSWORD=hunter2 PGDATABASE=tmp curl -v http://localhost:3300/health\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git clone git@github.com:cabotapp/docker-cabot.git cabot\n",
+      "type": "shell",
+      "command": "git clone git@github.com:cabotapp/docker-cabot.git cabot\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd cabot\n",
+      "type": "shell",
+      "command": "cd cabot\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git checkout 1f846b96\n",
+      "type": "shell",
+      "command": "git checkout 1f846b96\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker-compose up\n",
+      "type": "shell",
+      "command": "docker-compose up\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker rm cabot_postgres_1 cabot_rabbitmq_1 docker images\n",
+      "type": "shell",
+      "command": "docker rm cabot_postgres_1 cabot_rabbitmq_1 docker images\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker history grafana/grafana:6.5.2\n",
+      "type": "shell",
+      "command": "docker history grafana/grafana:6.5.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker pull node:lts-alpine\n",
+      "type": "shell",
+      "command": "docker pull node:lts-alpine\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -it --rm --name ephemeral ubuntu /bin/bash\n",
+      "type": "shell",
+      "command": "docker run -it --rm --name ephemeral ubuntu /bin/bash\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker ps\n",
+      "type": "shell",
+      "command": "docker ps\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "rm index.html ; curl -o index.html http://example.org\n",
+      "type": "shell",
+      "command": "rm index.html ; curl -o index.html http://example.org\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --rm -p 8080:80 -v $PWD:/usr/share/nginx/html nginx\n",
+      "type": "shell",
+      "command": "docker run --rm -p 8080:80 -v $PWD:/usr/share/nginx/html nginx\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$PWD:/usr/share/nginx/html -v $PWD .volume mount volume \n",
+      "type": "shell",
+      "command": "$PWD:/usr/share/nginx/html -v $PWD .volume mount volume \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$V-linux-x64-musl.tar.xz\n",
+      "type": "shell",
+      "command": "$V-linux-x64-musl.tar.xz\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "&& apk add --no-cache --virtual .deps curl  && curl -fsSLO --compressed \"https://unofficial-builds.nodejs.org/download/release/v$V/$FILE\"  && tar -xJf $FILE -C /usr/local --strip-components=1 && rm -f $FILE /usr/local/bin/npm /usr/local/bin/npx  && rm -rf /usr/local/lib/node_modules && apk del .deps\n",
+      "type": "shell",
+      "command": "&& apk add --no-cache --virtual .deps curl  && curl -fsSLO --compressed \"https://unofficial-builds.nodejs.org/download/release/v$V/$FILE\"  && tar -xJf $FILE -C /usr/local --strip-components=1 && rm -f $FILE /usr/local/bin/npm /usr/local/bin/npx  && rm -rf /usr/local/lib/node_modules && apk del .deps\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd recipe-api\n",
+      "type": "shell",
+      "command": "cd recipe-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker build -t tlhunter/recipe-api:v0.0.1 .\n",
+      "type": "shell",
+      "command": "docker build -t tlhunter/recipe-api:v0.0.1 .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --rm --name recipe-api-1 -p 8000:1337 tlhunter/recipe-api:v0.0.1\n",
+      "type": "shell",
+      "command": "docker run --rm --name recipe-api-1 -p 8000:1337 tlhunter/recipe-api:v0.0.1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:8000/recipes/42\n",
+      "type": "shell",
+      "command": "curl http://localhost:8000/recipes/42\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker kill recipe-api-1\n",
+      "type": "shell",
+      "command": "docker kill recipe-api-1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install --save-exact left-pad@1.3.0\n",
+      "type": "shell",
+      "command": "npm install --save-exact left-pad@1.3.0\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker history tlhunter/recipe-api:v0.0.1\n",
+      "type": "shell",
+      "command": "docker history tlhunter/recipe-api:v0.0.1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker-compose up\n",
+      "type": "shell",
+      "command": "docker-compose up\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:4000/recipes/42\n",
+      "type": "shell",
+      "command": "curl http://localhost:4000/recipes/42\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:9411/zipkin/\n",
+      "type": "shell",
+      "command": "curl http://localhost:9411/zipkin/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker rm distributed-node_web-api_1 distributed-node_recipe-api_1 distributed-node_zipkin_1\n",
+      "type": "shell",
+      "command": "docker rm distributed-node_web-api_1 distributed-node_recipe-api_1 distributed-node_zipkin_1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -d --name distnode-registry -p 5000:5000 --restart=always -v /tmp/registry:/var/lib/registry  registry:2.7.1\n",
+      "type": "shell",
+      "command": "docker run -d --name distnode-registry -p 5000:5000 --restart=always -v /tmp/registry:/var/lib/registry  registry:2.7.1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker image tag tlhunter/recipe-api:v0.0.1 time docker push localhost:5000/tlhunter/recipe-api:v0.0.1\n",
+      "type": "shell",
+      "command": "docker image tag tlhunter/recipe-api:v0.0.1 time docker push localhost:5000/tlhunter/recipe-api:v0.0.1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2\n",
+      "type": "shell",
+      "command": "docker rmi localhost:5000/tlhunter/recipe-api:v0.0.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker rmi tlhunter/recipe-api:v0.0.2\n",
+      "type": "shell",
+      "command": "docker rmi tlhunter/recipe-api:v0.0.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run tlhunter/recipe-api:v0.0.2 # should fail\n",
+      "type": "shell",
+      "command": "docker run tlhunter/recipe-api:v0.0.2 # should fail\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker pull localhost:5000/tlhunter/recipe-api:v0.0.2\n",
+      "type": "shell",
+      "command": "docker pull localhost:5000/tlhunter/recipe-api:v0.0.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2 tlhunter/recipe-api:v0.0.2\n",
+      "type": "shell",
+      "command": "docker image tag localhost:5000/tlhunter/recipe-api:v0.0.2 tlhunter/recipe-api:v0.0.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run tlhunter/recipe-api:v0.0.2 # this time it succeeds\n",
+      "type": "shell",
+      "command": "docker run tlhunter/recipe-api:v0.0.2 # this time it succeeds\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --name registry-browser --link distnode-registry -it --rm -p 8080:8080 -e DOCKER_REGISTRY_URL=http://distnode-registry:5000  klausmeyer/docker-registry-browser:1.3.2\n",
+      "type": "shell",
+      "command": "docker run --name registry-browser --link distnode-registry -it --rm -p 8080:8080 -e DOCKER_REGISTRY_URL=http://distnode-registry:5000  klausmeyer/docker-registry-browser:1.3.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker stop distnode-registry\n",
+      "type": "shell",
+      "command": "docker stop distnode-registry\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker rm distnode-registry\n",
+      "type": "shell",
+      "command": "docker rm distnode-registry\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git clone git@github.com:<USERNAME>/distnode-deploy.git\n",
+      "type": "shell",
+      "command": "git clone git@github.com:<USERNAME>/distnode-deploy.git\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd distnode-deploy\n",
+      "type": "shell",
+      "command": "cd distnode-deploy\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm init -y\n",
+      "type": "shell",
+      "command": "npm init -y\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install fastify@3.2\n",
+      "type": "shell",
+      "command": "npm install fastify@3.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${host}`);\n",
+      "type": "shell",
+      "command": "${host}`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${this.id}`;\n",
+      "type": "shell",
+      "command": "${this.id}`;\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git add .\n",
+      "type": "shell",
+      "command": "git add .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git commit -m \"Application files\"\n",
+      "type": "shell",
+      "command": "git commit -m \"Application files\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git push\n",
+      "type": "shell",
+      "command": "git push\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git checkout -b feature-1\n",
+      "type": "shell",
+      "command": "git checkout -b feature-1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git add .\n",
+      "type": "shell",
+      "command": "git add .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git commit -m \"Causing a failure\"\n",
+      "type": "shell",
+      "command": "git commit -m \"Causing a failure\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git push --set-upstream origin feature-1\n",
+      "type": "shell",
+      "command": "git push --set-upstream origin feature-1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm test\n",
+      "type": "shell",
+      "command": "npm test\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir test\n",
+      "type": "shell",
+      "command": "mkdir test\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install --save-dev tape@5\n",
+      "type": "shell",
+      "command": "npm install --save-dev tape@5\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm test ; echo \"STATUS: $?\"\n",
+      "type": "shell",
+      "command": "npm test ; echo \"STATUS: $?\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install --save-dev node-fetch@2.6\n",
+      "type": "shell",
+      "command": "npm install --save-dev node-fetch@2.6\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$/.exec(message)[1]; resolve({ server, url }); \n",
+      "type": "shell",
+      "command": "$/.exec(message)[1]; resolve({ server, url }); \n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${url}/recipes/42`); const body = await result.json(); t.equal(body.id, 42);\n",
+      "type": "shell",
+      "command": "${url}/recipes/42`); const body = await result.json(); t.equal(body.id, 42);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm test ; echo \"STATUS: $?\"\n",
+      "type": "shell",
+      "command": "npm test ; echo \"STATUS: $?\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install --save-dev nyc@15\n",
+      "type": "shell",
+      "command": "npm install --save-dev nyc@15\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm test ; echo \"STATUS: $?\"\n",
+      "type": "shell",
+      "command": "npm test ; echo \"STATUS: $?\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${url}/`);\n",
+      "type": "shell",
+      "command": "${url}/`);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm test ; echo \"STATUS: $?\"\n",
+      "type": "shell",
+      "command": "npm test ; echo \"STATUS: $?\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git add .\n",
+      "type": "shell",
+      "command": "git add .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git commit -m \"Adding a test suite and code coverage\"\n",
+      "type": "shell",
+      "command": "git commit -m \"Adding a test suite and code coverage\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git push\n",
+      "type": "shell",
+      "command": "git push\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git checkout master\n",
+      "type": "shell",
+      "command": "git checkout master\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git pull\n",
+      "type": "shell",
+      "command": "git pull\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git checkout master\n",
+      "type": "shell",
+      "command": "git checkout master\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "brew install travis\n",
+      "type": "shell",
+      "command": "brew install travis\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "ruby --version # `sudo apt install ruby` if you don't have Ruby\n",
+      "type": "shell",
+      "command": "ruby --version # `sudo apt install ruby` if you don't have Ruby\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "sudo apt-get install ruby2.7-dev # depending on Ruby version\n",
+      "type": "shell",
+      "command": "sudo apt-get install ruby2.7-dev # depending on Ruby version\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "sudo gem install travis\n",
+      "type": "shell",
+      "command": "sudo gem install travis\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "travis login --pro --auto-token\n",
+      "type": "shell",
+      "command": "travis login --pro --auto-token\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "travis encrypt --pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>\n",
+      "type": "shell",
+      "command": "travis encrypt --pro HEROKU_API_KEY=<YOUR_HEROKU_API_KEY>\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git add .\n",
+      "type": "shell",
+      "command": "git add .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git commit -m \"Enabling Heroku deployment\"\n",
+      "type": "shell",
+      "command": "git commit -m \"Enabling Heroku deployment\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "git push\n",
+      "type": "shell",
+      "command": "git push\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir leftish-padder && cd leftish-padder\n",
+      "type": "shell",
+      "command": "mkdir leftish-padder && cd leftish-padder\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm init\n",
+      "type": "shell",
+      "command": "npm init\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "touch index.js README.md foo.js bar.js baz.js\n",
+      "type": "shell",
+      "command": "touch index.js README.md foo.js bar.js baz.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir test && touch test/index.js\n",
+      "type": "shell",
+      "command": "mkdir test && touch test/index.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install --save express@4.17.1\n",
+      "type": "shell",
+      "command": "npm install --save express@4.17.1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin\n",
+      "type": "shell",
+      "command": "dd if=/dev/urandom bs=1048576 count=1 of=screenshot.bin\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "dd if=/dev/urandom bs=1048576 count=1 of=temp.bin\n",
+      "type": "shell",
+      "command": "dd if=/dev/urandom bs=1048576 count=1 of=temp.bin\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -it --rm --name verdaccio -p 4873:4873 verdaccio/verdaccio:4.8\n",
+      "type": "shell",
+      "command": "docker run -it --rm --name verdaccio -p 4873:4873 verdaccio/verdaccio:4.8\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm set registry http://localhost:4873\n",
+      "type": "shell",
+      "command": "npm set registry http://localhost:4873\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm adduser --registry http://localhost:4873\n",
+      "type": "shell",
+      "command": "npm adduser --registry http://localhost:4873\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd leftish-padder\n",
+      "type": "shell",
+      "command": "cd leftish-padder\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm publish --registry http://localhost:4873\n",
+      "type": "shell",
+      "command": "npm publish --registry http://localhost:4873\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm verson patch\n",
+      "type": "shell",
+      "command": "npm verson patch\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm publish --registry http://localhost:4873\n",
+      "type": "shell",
+      "command": "npm publish --registry http://localhost:4873\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir sample-app && cd sample-app\n",
+      "type": "shell",
+      "command": "mkdir sample-app && cd sample-app\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm init -y\n",
+      "type": "shell",
+      "command": "npm init -y\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install @<SCOPE>/leftish-padder\n",
+      "type": "shell",
+      "command": "npm install @<SCOPE>/leftish-padder\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "echo \"console.log(require('@<SCOPE>/leftish-padder')(10, 4, 0));\" >app.js\n",
+      "type": "shell",
+      "command": "echo \"console.log(require('@<SCOPE>/leftish-padder')(10, 4, 0));\" >app.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node app.js\n",
+      "type": "shell",
+      "command": "node app.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm config delete registry\n",
+      "type": "shell",
+      "command": "npm config delete registry\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube version\n",
+      "type": "shell",
+      "command": "minikube version\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl version --client\n",
+      "type": "shell",
+      "command": "kubectl version --client\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube start # MacOS:\n",
+      "type": "shell",
+      "command": "minikube start # MacOS:\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube start --vm=true\n",
+      "type": "shell",
+      "command": "minikube start --vm=true\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods\n",
+      "type": "shell",
+      "command": "kubectl get pods\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods --namespace=kube-system\n",
+      "type": "shell",
+      "command": "kubectl get pods --namespace=kube-system\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get nodes\n",
+      "type": "shell",
+      "command": "kubectl get nodes\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "eval $(minikube -p minikube docker-env)\n",
+      "type": "shell",
+      "command": "eval $(minikube -p minikube docker-env)\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube dashboard\n",
+      "type": "shell",
+      "command": "minikube dashboard\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.10\n",
+      "type": "shell",
+      "command": "kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.10\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get deployments\n",
+      "type": "shell",
+      "command": "kubectl get deployments\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods\n",
+      "type": "shell",
+      "command": "kubectl get pods\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get rs\n",
+      "type": "shell",
+      "command": "kubectl get rs\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$\tkubectl get deployments\t\n",
+      "type": "shell",
+      "command": "$\tkubectl get deployments\t\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$\tkubectl get pods\t\t\t\t\n",
+      "type": "shell",
+      "command": "$\tkubectl get pods\t\t\t\t\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get rs\n",
+      "type": "shell",
+      "command": "kubectl get rs\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$\tkubectl get deployments\n",
+      "type": "shell",
+      "command": "$\tkubectl get deployments\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$\tkubectl get pods\t-L\tapp\t\t\t\t\n",
+      "type": "shell",
+      "command": "$\tkubectl get pods\t-L\tapp\t\t\t\t\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$\tkubectl get rs\t\n",
+      "type": "shell",
+      "command": "$\tkubectl get rs\t\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl expose deployment hello-minikube --type=NodePort --port=8080\n",
+      "type": "shell",
+      "command": "kubectl expose deployment hello-minikube --type=NodePort --port=8080\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get services -o wide\n",
+      "type": "shell",
+      "command": "kubectl get services -o wide\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube service hello-minikube --url\n",
+      "type": "shell",
+      "command": "minikube service hello-minikube --url\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl `minikube service hello-minikube --url`\n",
+      "type": "shell",
+      "command": "curl `minikube service hello-minikube --url`\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete services hello-minikube\n",
+      "type": "shell",
+      "command": "kubectl delete services hello-minikube\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete deployment hello-minikube\n",
+      "type": "shell",
+      "command": "kubectl delete deployment hello-minikube\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get deployments\n",
+      "type": "shell",
+      "command": "kubectl get deployments\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods\n",
+      "type": "shell",
+      "command": "kubectl get pods\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get rs\n",
+      "type": "shell",
+      "command": "kubectl get rs\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd recipe-api\n",
+      "type": "shell",
+      "command": "cd recipe-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "type": "shell",
+      "command": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker build -t recipe-api:v1 .\n",
+      "type": "shell",
+      "command": "docker build -t recipe-api:v1 .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f recipe-api/recipe-api-deployment.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f recipe-api/recipe-api-deployment.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods\n",
+      "type": "shell",
+      "command": "kubectl get pods\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl describe pods <POD_NAME> | grep Liveness\n",
+      "type": "shell",
+      "command": "kubectl describe pods <POD_NAME> | grep Liveness\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f recipe-api/recipe-api-network.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f recipe-api/recipe-api-network.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube addons enable ingress\n",
+      "type": "shell",
+      "command": "minikube addons enable ingress\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods --namespace kube-system | grep ingress\n",
+      "type": "shell",
+      "command": "kubectl get pods --namespace kube-system | grep ingress\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cp recipe-api/Dockerfile web-api/Dockerfile\n",
+      "type": "shell",
+      "command": "cp recipe-api/Dockerfile web-api/Dockerfile\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd web-api\n",
+      "type": "shell",
+      "command": "cd web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1\n",
+      "type": "shell",
+      "command": "$1\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "type": "shell",
+      "command": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker build -t web-api:v1 .\n",
+      "type": "shell",
+      "command": "docker build -t web-api:v1 .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f web-api-deployment.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f web-api-deployment.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f web-api-network.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f web-api-network.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get ingress web-api-ingress\n",
+      "type": "shell",
+      "command": "kubectl get ingress web-api-ingress\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl -H \"Host: example.org\" http://<INGRESS_IP>/\n",
+      "type": "shell",
+      "command": "curl -H \"Host: example.org\" http://<INGRESS_IP>/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods -l app=recipe-api\n",
+      "type": "shell",
+      "command": "kubectl get pods -l app=recipe-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl scale deployment.apps/recipe-api --replicas=10\n",
+      "type": "shell",
+      "command": "kubectl scale deployment.apps/recipe-api --replicas=10\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods -l app=recipe-api\n",
+      "type": "shell",
+      "command": "kubectl get pods -l app=recipe-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f recipe-api/recipe-api-deployment.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f recipe-api/recipe-api-deployment.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd web-api\n",
+      "type": "shell",
+      "command": "cd web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "echo \"server.get('/hello', async () => 'Hello');\" >> consumer-http-basic.js\n",
+      "type": "shell",
+      "command": "echo \"server.get('/hello', async () => 'Hello');\" >> consumer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "type": "shell",
+      "command": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker build -t web-api:v2 .\n",
+      "type": "shell",
+      "command": "docker build -t web-api:v2 .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f web-api-deployment.yml\n",
+      "type": "shell",
+      "command": "kubectl apply -f web-api-deployment.yml\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get pods -w -l app=web-api\n",
+      "type": "shell",
+      "command": "kubectl get pods -w -l app=web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl `minikube service web-api-service --url`/hello\n",
+      "type": "shell",
+      "command": "curl `minikube service web-api-service --url`/hello\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl get rs -l app=web-api\n",
+      "type": "shell",
+      "command": "kubectl get rs -l app=web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "cd web-api\n",
+      "type": "shell",
+      "command": "cd web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "echo \"server.get('/kill', async () => { process.exit(42); });\" >> consumer-http-basic.js\n",
+      "type": "shell",
+      "command": "echo \"server.get('/kill', async () => { process.exit(42); });\" >> consumer-http-basic.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "type": "shell",
+      "command": "eval $(minikube -p minikube docker-env) # ensure Minikube docker\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker build -t web-api:v3 .\n",
+      "type": "shell",
+      "command": "docker build -t web-api:v3 .\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl apply -f web-api-deployment.yml --record=true\n",
+      "type": "shell",
+      "command": "kubectl apply -f web-api-deployment.yml --record=true\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl `minikube service web-api-service --url`/kill\n",
+      "type": "shell",
+      "command": "curl `minikube service web-api-service --url`/kill\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl rollout history deployment.v1.apps/web-api\n",
+      "type": "shell",
+      "command": "kubectl rollout history deployment.v1.apps/web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl rollout undo deployment.v1.apps/web-api --to-revision=<RELEASE_NUMBER>\n",
+      "type": "shell",
+      "command": "kubectl rollout undo deployment.v1.apps/web-api --to-revision=<RELEASE_NUMBER>\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete services recipe-api-service\n",
+      "type": "shell",
+      "command": "kubectl delete services recipe-api-service\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete services web-api-service\n",
+      "type": "shell",
+      "command": "kubectl delete services web-api-service\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete deployment recipe-api\n",
+      "type": "shell",
+      "command": "kubectl delete deployment recipe-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete deployment web-api\n",
+      "type": "shell",
+      "command": "kubectl delete deployment web-api\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kubectl delete ingress web-api-ingress\n",
+      "type": "shell",
+      "command": "kubectl delete ingress web-api-ingress\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube stop\n",
+      "type": "shell",
+      "command": "minikube stop\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "minikube delete\n",
+      "type": "shell",
+      "command": "minikube delete\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node -e \"process.exit(42)\" ; echo $?\n",
+      "type": "shell",
+      "command": "node -e \"process.exit(42)\" ; echo $?\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node -e \"throw new Error()\" ; echo $?\n",
+      "type": "shell",
+      "command": "node -e \"throw new Error()\" ; echo $?\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${process.pid}`); process.on('SIGHUP', () => console.log('Received: SIGHUP')); process.on('SIGINT', () => console.log('Received: SIGINT')); setTimeout(() => {}, 5 * 60 * 1000); // keep process alive\n",
+      "type": "shell",
+      "command": "${process.pid}`); process.on('SIGHUP', () => console.log('Received: SIGHUP')); process.on('SIGINT', () => console.log('Received: SIGINT')); setTimeout(() => {}, 5 * 60 * 1000); // keep process alive\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kill -s SIGHUP <PROCESS_ID>\n",
+      "type": "shell",
+      "command": "kill -s SIGHUP <PROCESS_ID>\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node -e \"process.kill(<PROCESS_ID>, 'SIGHUP')\"\n",
+      "type": "shell",
+      "command": "node -e \"process.kill(<PROCESS_ID>, 'SIGHUP')\"\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "kill -9 <PROCESS_ID>\n",
+      "type": "shell",
+      "command": "kill -9 <PROCESS_ID>\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${id}`, { method: 'patch', body }); doSomethingRisky();\n",
+      "type": "shell",
+      "command": "${id}`, { method: 'patch', body }); doSomethingRisky();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${id}`, { method: 'patch', body }); return 'OK';\n",
+      "type": "shell",
+      "command": "${id}`, { method: 'patch', body }); return 'OK';\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${PORT}`));\n",
+      "type": "shell",
+      "command": "${PORT}`));\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${account}`); const body = await result.text();\n",
+      "type": "shell",
+      "command": "${account}`); const body = await result.text();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node caching/server.js\n",
+      "type": "shell",
+      "command": "node caching/server.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:3000/account/tlhunter\n",
+      "type": "shell",
+      "command": "time curl http://localhost:3000/account/tlhunter\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:3000/account/nodejs\n",
+      "type": "shell",
+      "command": "time curl http://localhost:3000/account/nodejs\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:3000/account/tlhunter\n",
+      "type": "shell",
+      "command": "time curl http://localhost:3000/account/tlhunter\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=4000 node server.js\n",
+      "type": "shell",
+      "command": "PORT=4000 node server.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:4000/account/tlhunter\n",
+      "type": "shell",
+      "command": "time curl http://localhost:4000/account/tlhunter\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --name distnode-memcached -p 11211:11211 -it --rm memcached:1.6-alpine  memcached -m 64 -vv\n",
+      "type": "shell",
+      "command": "docker run --name distnode-memcached -p 11211:11211 -it --rm memcached:1.6-alpine  memcached -m 64 -vv\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${PORT}`));\n",
+      "type": "shell",
+      "command": "${PORT}`));\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${account}`); const body = await result.text();\n",
+      "type": "shell",
+      "command": "${account}`); const body = await result.text();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node caching/server-ext.js\n",
+      "type": "shell",
+      "command": "node caching/server-ext.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "PORT=4000 node caching/server-ext.js\n",
+      "type": "shell",
+      "command": "PORT=4000 node caching/server-ext.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:3000/account/tlhunter # miss\n",
+      "type": "shell",
+      "command": "time curl http://localhost:3000/account/tlhunter # miss\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:3000/account/tlhunter # hit\n",
+      "type": "shell",
+      "command": "time curl http://localhost:3000/account/tlhunter # hit\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "time curl http://localhost:4000/account/tlhunter # hit\n",
+      "type": "shell",
+      "command": "time curl http://localhost:4000/account/tlhunter # hit\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${account_id}`;\n",
+      "type": "shell",
+      "command": "${account_id}`;\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run --name distnode-postgres -it --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=user -e POSTGRES_DB=dbconn  postgres:12.3\n",
+      "type": "shell",
+      "command": "docker run --name distnode-postgres -it --rm -p 5432:5432 -e POSTGRES_PASSWORD=hunter2 -e POSTGRES_USER=user -e POSTGRES_DB=dbconn  postgres:12.3\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1 AS echo', [req.params.foo_id]);\n",
+      "type": "shell",
+      "command": "$1 AS echo', [req.params.foo_id]);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/foo/hello\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/foo/hello\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/health\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/health\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/foo/hello\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/foo/hello\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "curl http://localhost:3000/health\n",
+      "type": "shell",
+      "command": "curl http://localhost:3000/health\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "MAX_CONN=100 node ./dbconn/pool.js\n",
+      "type": "shell",
+      "command": "MAX_CONN=100 node ./dbconn/pool.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -c 200 http://localhost:3000/\n",
+      "type": "shell",
+      "command": "autocannon -c 200 http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "MAX_CONN=101 node ./dbconn/pool.js\n",
+      "type": "shell",
+      "command": "MAX_CONN=101 node ./dbconn/pool.js\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "autocannon -c 200 http://localhost:3000/\n",
+      "type": "shell",
+      "command": "autocannon -c 200 http://localhost:3000/\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${(Date.now() - start) / 1000} seconds`); db.end();\n",
+      "type": "shell",
+      "command": "${(Date.now() - start) / 1000} seconds`); db.end();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "mkdir migrations && cd migrations\n",
+      "type": "shell",
+      "command": "mkdir migrations && cd migrations\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm init -y\n",
+      "type": "shell",
+      "command": "npm init -y\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install knex@0.21 pg@8.2\n",
+      "type": "shell",
+      "command": "npm install knex@0.21 pg@8.2\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install -g knex@0.21\n",
+      "type": "shell",
+      "command": "npm install -g knex@0.21\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex init\n",
+      "type": "shell",
+      "command": "knex init\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:currentVersion\n",
+      "type": "shell",
+      "command": "knex migrate:currentVersion\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:make create_users\n",
+      "type": "shell",
+      "command": "knex migrate:make create_users\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "ls migrations\n",
+      "type": "shell",
+      "command": "ls migrations\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:list\n",
+      "type": "shell",
+      "command": "knex migrate:list\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:up\n",
+      "type": "shell",
+      "command": "knex migrate:up\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker exec -it distnode-postgres  psql -U user -W dbconn\n",
+      "type": "shell",
+      "command": "docker exec -it distnode-postgres  psql -U user -W dbconn\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:make create_groups\n",
+      "type": "shell",
+      "command": "knex migrate:make create_groups\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:latest\n",
+      "type": "shell",
+      "command": "knex migrate:latest\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "knex migrate:down\n",
+      "type": "shell",
+      "command": "knex migrate:down\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1', [id]); const person = result.rows[0];\n",
+      "type": "shell",
+      "command": "$1', [id]); const person = result.rows[0];\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1, lname = $2 WHERE id = $3', [fname, lname, id]);\n",
+      "type": "shell",
+      "command": "$1, lname = $2 WHERE id = $3', [fname, lname, id]);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1', [id]); const person = result.rows[0];\n",
+      "type": "shell",
+      "command": "$1', [id]); const person = result.rows[0];\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${person.fname} ${person.lname}`; return { id, name };\n",
+      "type": "shell",
+      "command": "${person.fname} ${person.lname}`; return { id, name };\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1 WHERE id = $2', [name, id]);\n",
+      "type": "shell",
+      "command": "$1 WHERE id = $2', [name, id]);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "$1', [id]); return { id, name: result.rows[0].name };\n",
+      "type": "shell",
+      "command": "$1', [id]); return { id, name: result.rows[0].name };\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${id}.txt`, url);\n",
+      "type": "shell",
+      "command": "${id}.txt`, url);\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${id}`;\n",
+      "type": "shell",
+      "command": "${id}`;\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "${code}.txt`).toString();\n",
+      "type": "shell",
+      "command": "${code}.txt`).toString();\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "docker run -it --rm --name distnode-redis -p 6379:6379 redis:6.0.5-alpine\n",
+      "type": "shell",
+      "command": "docker run -it --rm --name distnode-redis -p 6379:6379 redis:6.0.5-alpine\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "echo \"PINGdocker exec -it mkdir redis && cd redis\n",
+      "type": "shell",
+      "command": "echo \"PINGdocker exec -it mkdir redis && cd redis\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm init -y\n",
+      "type": "shell",
+      "command": "npm init -y\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "npm install ioredis@4.17\n",
+      "type": "shell",
+      "command": "npm install ioredis@4.17\n",
+      "presentation": { "panel": "new" }
+    },
+    {
+      "label": "node redis/basic.js\n",
+      "type": "shell",
+      "command": "node redis/basic.js\n",
+      "presentation": { "panel": "new" }
     }
   ]
 }

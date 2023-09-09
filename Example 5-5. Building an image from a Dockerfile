@@ -1,0 +1,1 @@
+$ cd recipe-api$ docker build -t tlhunter/recipe-api:v0.0.1 .$ cd recipe-api$ docker build -t tlhunter/recipe-api:v0.0.1 .$ cd recipe-api$ docker build -t tlhunter/recipe-api:v0.0.1 .$ cd recipe-api$ docker build -t tlhunter/recipe-api:v0.0.1 .
